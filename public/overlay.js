@@ -40,7 +40,7 @@ function render(state) {
   if (!profile) return;
 
   const overlay = el('overlay');
-  overlay.className = 'overlay-card position-' + (state.position || 'top-right');
+  overlay.className = 'overlay-card position-' + (state.position || 'top-right') + ' theme-' + (state.selectedGame || '2xko');
   overlay.style.transform = 'scale(' + (Number.isFinite(state.scale) ? state.scale : 0.9) + ')';
   overlay.style.opacity = String((Number.isFinite(state.opacity) ? state.opacity : 94) / 100);
   el('player-name').textContent = state.playerName || 'PLAYER';
