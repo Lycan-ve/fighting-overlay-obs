@@ -22,6 +22,7 @@ let latestDetected = [];
 const SCAN_PHASES = ['team', 'result', 'opponents', 'result'];
 const RESULT_COOLDOWN_MS = 10000;
 const GAME_NAMES = { '2xko': '2XKO', mk1: 'MORTAL KOMBAT 1', ggst: 'GUILTY GEAR STRIVE' };
+const THEME_CLASSES = ['theme-2xko', 'theme-mk1', 'theme-ggst'];
 const FIGHTER_ASSET_BASE = 'https://raw.githubusercontent.com/Lycan-ve/Hot-Coffee-Frontend/master/public/fighters/';
 
 // Zonas de lectura sobre la captura (proporciones del ancho/alto de la ventana).
@@ -266,6 +267,8 @@ function render(state) {
   const mount = $('preview-mount');
   mount.style.opacity = String(state.opacity / 100);
   const card = mount.querySelector('.preview-card');
+  card.classList.remove.apply(card.classList, THEME_CLASSES);
+  card.classList.add('theme-' + state.selectedGame);
   card.style.transform = 'scale(' + (0.27 * state.scale) + ')';
   card.classList.toggle('position-bottom-center', state.position === 'bottom-center');
   card.style.transformOrigin = state.position === 'bottom-center' ? 'bottom center' : (state.position.endsWith('left') ? 'top left' : 'top right');
