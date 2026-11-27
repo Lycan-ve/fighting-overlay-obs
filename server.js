@@ -18,6 +18,28 @@ const GAME_LABELS = {
   'ggst': 'GUILTY GEAR STRIVE'
 };
 
+const TWO_XKO_ROSTER = new Set([
+  'Ahri', 'Akali', 'Blitzcrank', 'Braum', 'Caitlyn', 'Darius', 'Ekko', 'Illaoi',
+  'Jinx', 'Lux', 'Samira', 'Senna', 'Sett', 'Teemo', 'Thresh', 'Vi', 'Warwick', 'Yasuo'
+]);
+
+const HISTORY_LIMIT = 60;
+
+function defaultProfile(mains) {
+  return {
+    wins: 0,
+    losses: 0,
+    mains: mains || [],
+    streak: 0,
+    detectedCharacters: [],
+    detectedAt: 0,
+    detectedOpponents: [],
+    detectedOpponentsAt: 0,
+    matchHistory: [],
+    charStats: {}
+  };
+}
+
 function defaultState() {
   return {
     playerName: 'LYCAN',
@@ -25,10 +47,12 @@ function defaultState() {
     position: 'bottom-center',
     scale: 0.9,
     opacity: 94,
+    autoRecord: true,
+    autoApplyMains: false,
     profiles: {
-      '2xko': { wins: 0, losses: 0, mains: ['Ekko', 'Warwick'], streak: 0, detectedCharacters: [], detectedAt: 0 },
-      'mk1': { wins: 0, losses: 0, mains: [], streak: 0, detectedCharacters: [], detectedAt: 0 },
-      'ggst': { wins: 0, losses: 0, mains: [], streak: 0, detectedCharacters: [], detectedAt: 0 }
+      '2xko': defaultProfile(['Ekko', 'Warwick']),
+      'mk1': defaultProfile([]),
+      'ggst': defaultProfile([])
     },
     lastResult: null,
     updatedAt: Date.now()
@@ -40,14 +64,14 @@ function loadState() {
     if (!fs.existsSync(DATA_FILE)) return defaultState();
     const parsed = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
     const base = defaultState();
-    return {
-      ...base,
-      ...parsed,
-      profiles: {
-        ...base.profiles,
-        ...(parsed.profiles || {})
-      }
-    };
+    const merged = { ...base, ...parsed };
+    merged.profiles = {};
+    for (const game of Object.keys(GAME_LABELS)) {
+      const fallback = base.profiles[game];
+      const loaded = parsed.profiles && parsed.profiles[game] ? parsed.profiles[game] : {};
+      merged.profiles[game] = { ...fallback, ...loaded };
+    }
+    return merged;
   } catch (error) {
     console.error('No se pudo leer data.json. Se usaran valores iniciales:', error.message);
     return defaultState();
@@ -58,7 +82,7 @@ let state = loadState();
 
 function saveState() {
   state.updatedAt = Date.now();
-  const tempFile = `${DATA_FILE}.tmp`;
+  const tempFile = DATA_FILE + '.tmp';
   fs.writeFileSync(tempFile, JSON.stringify(state, null, 2), 'utf8');
   fs.renameSync(tempFile, DATA_FILE);
 }
@@ -77,7 +101,7 @@ function readJson(req) {
     let body = '';
     req.on('data', chunk => {
       body += chunk;
-      if (body.length > 1_000_000) {
+      if (body.length > 1000000) {
         reject(new Error('La solicitud es demasiado grande.'));
         req.destroy();
       }
@@ -93,10 +117,47 @@ function readJson(req) {
   });
 }
 
-function cleanString(value, fallback, max = 32) {
+function cleanString(value, fallback, max) {
   if (typeof value !== 'string') return fallback;
-  const cleaned = value.trim().replace(/[<>]/g, '').slice(0, max);
+  const limit = max || 32;
+  const cleaned = value.trim().replace(/[<>]/g, '').slice(0, limit);
   return cleaned || fallback;
+}
+
+function rosterNames(raw, limit) {
+  if (!Array.isArray(raw)) return [];
+  const unique = [];
+  for (const name of raw) {
+    const cleaned = cleanString(name, '', 20);
+    if (TWO_XKO_ROSTER.has(cleaned) && !unique.includes(cleaned)) unique.push(cleaned);
+  }
+  return unique.slice(0, limit || 2);
+}
+
+function sanitizeCharStats(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const name of Object.keys(raw)) {
+    if (!TWO_XKO_ROSTER.has(name)) continue;
+    const entry = raw[name] || {};
+    out[name] = {
+      wins: Number.isInteger(entry.wins) ? Math.max(0, Math.min(9999, entry.wins)) : 0,
+      losses: Number.isInteger(entry.losses) ? Math.max(0, Math.min(9999, entry.losses)) : 0
+    };
+  }
+  return out;
+}
+
+function sanitizeHistory(raw) {
+  if (!Array.isArray(raw)) return [];
+  const entries = raw.slice(-HISTORY_LIMIT).map(entry => ({
+    at: Number.isFinite(Number(entry && entry.at)) ? Number(entry.at) : 0,
+    result: entry && entry.result === 'win' ? 'win' : 'loss',
+    team: rosterNames(entry && entry.team),
+    opponents: rosterNames(entry && entry.opponents),
+    source: entry && entry.source === 'auto' ? 'auto' : 'manual'
+  }));
+  return entries;
 }
 
 function sanitizeState(input) {
@@ -107,6 +168,8 @@ function sanitizeState(input) {
     ? input.position : state.position;
   next.scale = Number.isFinite(Number(input.scale)) ? Math.min(1.35, Math.max(0.7, Number(input.scale))) : state.scale;
   next.opacity = Number.isFinite(Number(input.opacity)) ? Math.min(100, Math.max(35, Number(input.opacity))) : state.opacity;
+  next.autoRecord = typeof input.autoRecord === 'boolean' ? input.autoRecord : state.autoRecord;
+  next.autoApplyMains = typeof input.autoApplyMains === 'boolean' ? input.autoApplyMains : state.autoApplyMains;
 
   for (const game of Object.keys(GAME_LABELS)) {
     const oldProfile = state.profiles[game] || next.profiles[game];
@@ -122,7 +185,13 @@ function sanitizeState(input) {
       detectedCharacters: Array.isArray(incoming.detectedCharacters)
         ? incoming.detectedCharacters.map(name => cleanString(name, '', 20)).filter(Boolean).slice(0, 2)
         : (oldProfile.detectedCharacters || []),
-      detectedAt: Number.isFinite(Number(incoming.detectedAt)) ? Math.max(0, Number(incoming.detectedAt)) : (oldProfile.detectedAt || 0)
+      detectedAt: Number.isFinite(Number(incoming.detectedAt)) ? Math.max(0, Number(incoming.detectedAt)) : (oldProfile.detectedAt || 0),
+      detectedOpponents: Array.isArray(incoming.detectedOpponents)
+        ? incoming.detectedOpponents.map(name => cleanString(name, '', 20)).filter(Boolean).slice(0, 2)
+        : (oldProfile.detectedOpponents || []),
+      detectedOpponentsAt: Number.isFinite(Number(incoming.detectedOpponentsAt)) ? Math.max(0, Number(incoming.detectedOpponentsAt)) : (oldProfile.detectedOpponentsAt || 0),
+      matchHistory: sanitizeHistory(incoming.matchHistory !== undefined ? incoming.matchHistory : oldProfile.matchHistory),
+      charStats: sanitizeCharStats(incoming.charStats !== undefined ? incoming.charStats : oldProfile.charStats)
     };
   }
   next.lastResult = state.lastResult;
@@ -144,7 +213,7 @@ function serveStatic(req, res, pathname) {
   if (requestedPath === '/overlay') requestedPath = '/overlay.html';
   if (requestedPath === '/remote') requestedPath = '/remote.html';
 
-  const filePath = path.resolve(PUBLIC_DIR, `.${requestedPath}`);
+  const filePath = path.resolve(PUBLIC_DIR, '.' + requestedPath);
   if (!filePath.startsWith(PUBLIC_DIR + path.sep)) {
     res.writeHead(403);
     return res.end('Forbidden');
@@ -164,7 +233,7 @@ function serveStatic(req, res, pathname) {
 }
 
 const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  const url = new URL(req.url, 'http://' + (req.headers.host || 'localhost'));
   const pathname = decodeURIComponent(url.pathname);
 
   if (req.method === 'GET' && pathname === '/api/network-info') {
@@ -198,7 +267,12 @@ const server = http.createServer(async (req, res) => {
       if (!['win', 'loss'].includes(input.result)) {
         return sendJson(res, 400, { ok: false, error: 'El resultado debe ser win o loss.' });
       }
+      if (input.source === 'auto' && state.autoRecord === false) {
+        return sendJson(res, 200, { ok: true, skipped: true, reason: 'auto-record-off', state });
+      }
       const profile = state.profiles[state.selectedGame];
+      profile.charStats = profile.charStats && typeof profile.charStats === 'object' ? profile.charStats : {};
+      profile.matchHistory = Array.isArray(profile.matchHistory) ? profile.matchHistory : [];
       if (input.result === 'win') {
         profile.wins += 1;
         profile.streak = profile.streak > 0 ? profile.streak + 1 : 1;
@@ -206,7 +280,63 @@ const server = http.createServer(async (req, res) => {
         profile.losses += 1;
         profile.streak = profile.streak < 0 ? profile.streak - 1 : -1;
       }
+      const team = Array.isArray(profile.detectedCharacters) ? profile.detectedCharacters.slice(0, 2) : [];
+      const opponents = Array.isArray(profile.detectedOpponents) ? profile.detectedOpponents.slice(0, 2) : [];
+      for (const name of team) {
+        const stats = profile.charStats[name] || (profile.charStats[name] = { wins: 0, losses: 0 });
+        if (input.result === 'win') stats.wins += 1;
+        else stats.losses += 1;
+      }
+      profile.matchHistory.push({
+        at: Date.now(),
+        result: input.result,
+        team,
+        opponents,
+        source: input.source === 'auto' ? 'auto' : 'manual'
+      });
+      if (profile.matchHistory.length > HISTORY_LIMIT) profile.matchHistory = profile.matchHistory.slice(-HISTORY_LIMIT);
       state.lastResult = { result: input.result, game: state.selectedGame, at: Date.now() };
+      saveState();
+      return sendJson(res, 200, { ok: true, state });
+    } catch (error) {
+      return sendJson(res, 400, { ok: false, error: error.message });
+    }
+  }
+
+  if (req.method === 'POST' && pathname === '/api/undo') {
+    try {
+      const input = await readJson(req);
+      const game = input.game || state.selectedGame;
+      if (!Object.hasOwn(GAME_LABELS, game)) return sendJson(res, 400, { ok: false, error: 'Juego no valido.' });
+      const profile = state.profiles[game];
+      profile.matchHistory = Array.isArray(profile.matchHistory) ? profile.matchHistory : [];
+      profile.charStats = profile.charStats && typeof profile.charStats === 'object' ? profile.charStats : {};
+      if (!profile.matchHistory.length) {
+        return sendJson(res, 400, { ok: false, error: 'No hay partidas registradas para deshacer.' });
+      }
+      const last = profile.matchHistory.pop();
+      if (last.result === 'win') profile.wins = Math.max(0, profile.wins - 1);
+      else profile.losses = Math.max(0, profile.losses - 1);
+      for (const name of Array.isArray(last.team) ? last.team : []) {
+        const stats = profile.charStats[name];
+        if (stats) {
+          if (last.result === 'win') stats.wins = Math.max(0, stats.wins - 1);
+          else stats.losses = Math.max(0, stats.losses - 1);
+        }
+      }
+      if (profile.matchHistory.length) {
+        let streak = profile.matchHistory[profile.matchHistory.length - 1].result === 'win' ? 1 : -1;
+        for (let i = profile.matchHistory.length - 2; i >= 0; i -= 1) {
+          const entry = profile.matchHistory[i];
+          if (entry.result === 'win' && streak > 0) streak += 1;
+          else if (entry.result === 'loss' && streak < 0) streak -= 1;
+          else break;
+        }
+        profile.streak = streak;
+      } else {
+        profile.streak = 0;
+      }
+      state.lastResult = null;
       saveState();
       return sendJson(res, 200, { ok: true, state });
     } catch (error) {
@@ -219,16 +349,19 @@ const server = http.createServer(async (req, res) => {
       const input = await readJson(req);
       const game = input.game || state.selectedGame;
       if (game !== '2xko') return sendJson(res, 400, { ok: false, error: 'La detección automática de personajes está configurada para 2XKO.' });
-      const roster = new Set([
-        'Ahri', 'Akali', 'Blitzcrank', 'Braum', 'Caitlyn', 'Darius', 'Ekko', 'Illaoi',
-        'Jinx', 'Lux', 'Samira', 'Senna', 'Sett', 'Teemo', 'Thresh', 'Vi', 'Warwick', 'Yasuo'
-      ]);
-      const characters = Array.isArray(input.characters)
-        ? [...new Set(input.characters.map(name => cleanString(name, '', 20)).filter(name => roster.has(name)))].slice(0, 2)
-        : [];
-      if (!characters.length) return sendJson(res, 400, { ok: false, error: 'No se reconocieron personajes válidos de 2XKO.' });
-      state.profiles['2xko'].detectedCharacters = characters;
-      state.profiles['2xko'].detectedAt = Date.now();
+      const own = rosterNames(input.characters);
+      const opponents = rosterNames(input.opponents);
+      if (!own.length && !opponents.length) return sendJson(res, 400, { ok: false, error: 'No se reconocieron personajes válidos de 2XKO.' });
+      const profile = state.profiles['2xko'];
+      if (own.length) {
+        profile.detectedCharacters = own;
+        profile.detectedAt = Date.now();
+      }
+      if (opponents.length) {
+        profile.detectedOpponents = opponents;
+        profile.detectedOpponentsAt = Date.now();
+      }
+      if (state.autoApplyMains && own.length) profile.mains = own.slice(0, 3);
       saveState();
       return sendJson(res, 200, { ok: true, state });
     } catch (error) {
@@ -261,13 +394,16 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log('\nOverlay de juegos de pelea lista:');
-  console.log(`  Panel de control: http://127.0.0.1:${PORT}/dashboard`);
-  console.log(`  Overlay para OBS: http://127.0.0.1:${PORT}/overlay`);
+  console.log('');
+  console.log('Overlay de juegos de pelea v0.4 lista:');
+  console.log('  Panel de control: http://127.0.0.1:' + PORT + '/dashboard');
+  console.log('  Overlay para OBS: http://127.0.0.1:' + PORT + '/overlay');
   const interfaces = os.networkInterfaces();
   for (const entries of Object.values(interfaces)) for (const item of entries || []) {
-    if (item.family === 'IPv4' && !item.internal) console.log(`  Control móvil: http://${item.address}:${PORT}/remote`);
+    if (item.family === 'IPv4' && !item.internal) console.log('  Control móvil: http://' + item.address + ':' + PORT + '/remote');
   }
-  console.log(`  Código de conexión móvil: ${REMOTE_PIN}`);
-  console.log('\nDeja esta ventana abierta mientras uses la overlay.\n');
+  console.log('  Código de conexión móvil: ' + REMOTE_PIN);
+  console.log('');
+  console.log('Deja esta ventana abierta mientras uses la overlay.');
+  console.log('');
 });

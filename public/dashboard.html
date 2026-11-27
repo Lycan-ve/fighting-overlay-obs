@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Panel · Fighting Overlay</title>
   <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/automation.css">
 </head>
 <body class="dashboard-page">
   <div class="dashboard-shell">
@@ -48,16 +49,20 @@
             <div id="main-picker" class="fighter-picker" aria-label="Seleccionar personajes principales"></div>
             <p class="picker-hint" id="picker-hint">Selecciona hasta tres personajes. También puedes escribir sus nombres arriba.</p>
           </div>
+          <div class="toggle-row">
+            <div class="toggle-copy"><strong>Aplicar mains automáticamente</strong><small>Cuando el detector confirma tu equipo en pantalla, se guarda como tus mains sin pulsar nada. Se puede seguir editando a mano.</small></div>
+            <label class="switch"><input type="checkbox" id="auto-apply-toggle"><span class="track"></span><span class="thumb"></span></label>
+          </div>
           <button id="save-profile" class="button button-primary">Guardar perfil <span>↗</span></button>
           <div id="save-message" class="inline-message" role="status"></div>
         </section>
 
         <section class="panel-section detection-section">
           <div class="section-heading">
-            <div><div class="eyebrow">LECTURA DEL HUD</div><h2>Detectar personajes</h2></div>
+            <div><div class="eyebrow">LECTURA DEL HUD</div><h2>Detección automática</h2></div>
             <span class="section-mark">02</span>
           </div>
-          <p class="section-description">Comparte la ventana de 2XKO. El lector examina las etiquetas de tu equipo en la parte superior de la pantalla.</p>
+          <p class="section-description">Comparte la ventana de 2XKO. Con la detección activa, el lector identifica tu equipo, al equipo rival y el resultado de cada partida, todo automáticamente.</p>
           <label class="field-label" for="hud-side">¿En qué lado aparece tu jugador?</label>
           <select id="hud-side" class="text-input">
             <option value="left">Izquierda · como en tu escena</option>
@@ -73,13 +78,29 @@
             <div class="detected-list" id="detected-list"><span class="detected-empty">Aún no hay personajes detectados</span></div>
           </div>
           <div class="ocr-preview-wrap">
-            <div class="ocr-preview-label">RECORTE DEL HUD · VISTA DE DIAGNÓSTICO</div>
+            <div class="ocr-preview-label">RECORTE DEL HUD · TU EQUIPO</div>
             <canvas id="ocr-crop-preview" width="960" height="135"></canvas>
+          </div>
+          <div class="ocr-preview-wrap">
+            <div class="ocr-preview-label">RECORTE DEL HUD · RIVALES</div>
+            <canvas id="ocr-opponent-preview" width="960" height="135"></canvas>
+          </div>
+          <div class="ocr-preview-wrap">
+            <div class="ocr-preview-label">ZONA DE RESULTADO · VICTORIA / DERROTA</div>
+            <canvas id="result-crop-preview" width="720" height="300"></canvas>
           </div>
           <button id="apply-detected" class="button button-secondary" disabled>Usar personajes detectados como mis mains</button>
           <details class="ocr-details">
-            <summary>Ver texto reconocido</summary>
+            <summary>Ver texto reconocido · equipo</summary>
             <pre id="ocr-text">Esperando captura…</pre>
+          </details>
+          <details class="ocr-details">
+            <summary>Ver texto reconocido · rivales</summary>
+            <pre id="opponent-text">Esperando captura…</pre>
+          </details>
+          <details class="ocr-details">
+            <summary>Ver texto reconocido · zona de resultado</summary>
+            <pre id="result-text">Esperando captura…</pre>
           </details>
           <p class="privacy-note">El vídeo se procesa en este navegador. No se graba ni se envía al servidor del overlay. La primera carga descarga el motor OCR desde una CDN y requiere internet.</p>
         </section>
@@ -89,18 +110,27 @@
             <div><div class="eyebrow">REGISTRO DE PARTIDAS</div><h2>Actualizar marcador</h2></div>
             <span class="section-mark">03</span>
           </div>
-          <p class="section-description">Registra el resultado de cada combate. El marcador de OBS se actualizará automáticamente.</p>
+          <p class="section-description">Con la detección activa, cada partida se registra sola al aparecer la pantalla de resultado. También puedes registrar a mano o desde el teléfono.</p>
+          <div class="toggle-row">
+            <div class="toggle-copy"><strong>Registro automático de resultados</strong><small>Dos lecturas seguidas de VICTORY o DEFEAT en la pantalla final registran la partida. Incluye un enfriamiento de 10 segundos para evitar duplicados.</small></div>
+            <label class="switch"><input type="checkbox" id="auto-record-toggle" checked><span class="track"></span><span class="thumb"></span></label>
+          </div>
           <div class="result-buttons">
             <button id="add-win" class="button button-win"><span class="result-symbol">+</span><span><strong>VICTORIA</strong><small>Sumar una victoria</small></span></button>
             <button id="add-loss" class="button button-loss"><span class="result-symbol">−</span><span><strong>DERROTA</strong><small>Sumar una derrota</small></span></button>
           </div>
+          <button id="undo-last" class="button button-secondary" style="width:100%;margin-top:10px">Deshacer última partida</button>
           <div class="score-summary">
             <div><span>VICTORIAS</span><strong id="summary-wins">0</strong></div>
             <div><span>DERROTAS</span><strong id="summary-losses">0</strong></div>
             <div><span>WIN RATE</span><strong id="summary-rate">0%</strong></div>
             <div><span>RACHA</span><strong id="summary-streak">—</strong></div>
           </div>
-          <button id="reset-stats" class="text-button">Reiniciar estadísticas de este juego</button>
+          <div class="history-heading">HISTORIAL DE PARTIDAS</div>
+          <div id="history-list" class="history-list"></div>
+          <div class="history-heading">RENDIMIENTO POR PERSONAJE</div>
+          <div id="char-stats-list" class="char-stats-grid"></div>
+          <button id="reset-stats" class="text-button" style="margin-top:18px">Reiniciar estadísticas de este juego</button>
         </section>
 
         <section class="panel-section appearance-section">
@@ -140,6 +170,7 @@
                 </div>
                 <div class="stats-row"><div class="stat stat-win"><span class="stat-number" id="preview-wins">0</span><span class="stat-label">VICTORIAS</span></div><div class="stat stat-loss"><span class="stat-number" id="preview-losses">0</span><span class="stat-label">DERROTAS</span></div><div class="stat stat-rate"><span class="stat-number" id="preview-rate">0<span class="percent">%</span></span><span class="stat-label">WIN RATE</span></div></div>
                 <div class="team-detected-row" id="preview-team-row" hidden><span class="mains-label">EN PARTIDA</span><div class="detected-chips" id="preview-team-chips"></div><span class="detector-live-dot"></span></div>
+                <div class="team-detected-row" id="preview-opponents-row" hidden><span class="mains-label">RIVALES</span><div class="detected-chips" id="preview-opponents-chips"></div></div>
                 <div class="overlay-bottomline"><div class="mains-label">MIS MAINS</div><div class="mains-list" id="preview-mains"><span class="main-chip">Ekko · Warwick</span></div></div>
               </div>
             </div>
@@ -152,18 +183,18 @@
         </section>
         <section class="notice-panel">
           <div class="notice-icon">✧</div>
-          <div><strong>Detección experimental de 2XKO</strong><p>El lector busca los nombres de campeón en el HUD superior. Si el juego cambia de interfaz, resolución o lado, podremos ajustar el recorte con la vista de diagnóstico. La detección de resultados W/L sigue siendo manual en esta versión.</p></div>
+          <div><strong>Automatización v0.4</strong><p>Mientras la detección esté activa, el sistema lee tu equipo, el de los rivales y el resultado de cada partida. Las zonas de lectura son ajustables con las vistas de diagnóstico; si la overlay registra algo mal, usa Deshacer última partida.</p></div>
         </section>
       </aside>
     </main>
-    <footer class="dashboard-footer"><span>FIGHTING OVERLAY <b>v0.3</b></span><span>Datos guardados localmente en este equipo.</span></footer>
+    <footer class="dashboard-footer"><span>FIGHTING OVERLAY <b>v0.4</b></span><span>Datos guardados localmente en este equipo.</span></footer>
   </div>
   <video id="capture-video" muted playsinline></video>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script>
     fetch('/api/network-info').then(r=>r.json()).then(info=>{
       const url=document.getElementById('remote-url');
-      url.textContent=info.addresses.length ? `http://${info.addresses[0]}:${info.port}/remote` : 'No se detectó una dirección Wi‑Fi local';
+      url.textContent=info.addresses.length ? 'http://'+info.addresses[0]+':'+info.port+'/remote' : 'No se detectó una dirección Wi‑Fi local';
       document.getElementById('remote-pin').textContent=info.pin;
     }).catch(()=>{document.getElementById('remote-url').textContent='No se pudo obtener la dirección local';});
   </script>
