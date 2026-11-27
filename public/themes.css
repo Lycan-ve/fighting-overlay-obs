@@ -1,30 +1,30 @@
-/* v0.5 · Temas visuales por juego. 2XKO conserva el tema base de styles.css. */
+/* v0.6 · Temas visuales por juego. 2XKO conserva el tema base de styles.css. */
 
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Chakra+Petch:wght@600;700&display=swap');
 
-/* ============ MORTAL KOMBAT 1 · sangre y oro, ángulos rectos ============ */
-.overlay-card.theme-mk1{
+/* ============ MORTAL KOMBAT 11 · sangre y oro, ángulos rectos ============ */
+.overlay-card.theme-mk11{
   background:linear-gradient(120deg,rgba(24,7,9,.97),rgba(48,12,16,.94) 55%,rgba(30,8,10,.96));
   border:1px solid rgba(224,82,82,.68);
   border-radius:0;
   box-shadow:0 8px 30px rgba(0,0,0,.5),inset 0 0 22px rgba(120,16,20,.25);
 }
-.overlay-card.theme-mk1 .overlay-accent{height:4px;background:linear-gradient(90deg,#7a1418 0%,#d2372f 45%,#f0b429 100%)}
-.overlay-card.theme-mk1 .player-emblem{border-radius:0;transform:skew(-8deg);border:1px solid rgba(240,180,41,.7);background:linear-gradient(145deg,#8c1d1d,#2a0b0d);color:#f5c95a;font-family:'Cinzel',serif}
-.overlay-card.theme-mk1 .player-name{font-family:'Cinzel',serif;font-weight:900;letter-spacing:2px;color:#f3d9a4;text-shadow:0 1px 10px rgba(210,55,47,.35)}
-.overlay-card.theme-mk1 .eyebrow{color:#e8a0a0;letter-spacing:1.8px}
-.overlay-card.theme-mk1 .streak-pill{border-radius:0;font-family:'Cinzel',serif}
-.overlay-card.theme-mk1 .stats-row{border-top:1px solid rgba(224,82,82,.35);border-bottom:1px solid rgba(224,82,82,.35)}
-.overlay-card.theme-mk1 .stat-number{font-family:'Cinzel',serif;font-weight:900}
-.overlay-card.theme-mk1 .stat-win .stat-number{color:#f0b429}
-.overlay-card.theme-mk1 .stat-loss .stat-number{color:#ff6b5e}
-.overlay-card.theme-mk1 .stat-rate .stat-number{color:#ff9c5f}
-.overlay-card.theme-mk1 .stat-label,.overlay-card.theme-mk1 .mains-label{color:#d9a9a0;letter-spacing:1.5px}
-.overlay-card.theme-mk1 .main-chip{font-family:'Cinzel',serif;color:#f5d9a4;background:rgba(140,29,29,.3);border:1px solid rgba(224,130,60,.45);border-radius:0}
-.overlay-card.theme-mk1 .detected-chip{font-family:'Cinzel',serif;color:#ffd98c;background:rgba(140,29,29,.32);border:1px solid rgba(240,180,41,.5);border-radius:0}
-.overlay-card.theme-mk1 .team-detected-row{border-bottom:1px solid rgba(224,82,82,.35)}
-.overlay-card.theme-mk1 .detector-live-dot{background:#ff6b5e;box-shadow:0 0 9px rgba(255,107,94,.95)}
-.overlay-card.theme-mk1 .result-toast{font-family:'Cinzel',serif;border-radius:0;background:rgba(22,6,8,.94)}
+.overlay-card.theme-mk11 .overlay-accent{height:4px;background:linear-gradient(90deg,#7a1418 0%,#d2372f 45%,#f0b429 100%)}
+.overlay-card.theme-mk11 .player-emblem{border-radius:0;transform:skew(-8deg);border:1px solid rgba(240,180,41,.7);background:linear-gradient(145deg,#8c1d1d,#2a0b0d);color:#f5c95a;font-family:'Cinzel',serif}
+.overlay-card.theme-mk11 .player-name{font-family:'Cinzel',serif;font-weight:900;letter-spacing:2px;color:#f3d9a4;text-shadow:0 1px 10px rgba(210,55,47,.35)}
+.overlay-card.theme-mk11 .eyebrow{color:#e8a0a0;letter-spacing:1.8px}
+.overlay-card.theme-mk11 .streak-pill{border-radius:0;font-family:'Cinzel',serif}
+.overlay-card.theme-mk11 .stats-row{border-top:1px solid rgba(224,82,82,.35);border-bottom:1px solid rgba(224,82,82,.35)}
+.overlay-card.theme-mk11 .stat-number{font-family:'Cinzel',serif;font-weight:900}
+.overlay-card.theme-mk11 .stat-win .stat-number{color:#f0b429}
+.overlay-card.theme-mk11 .stat-loss .stat-number{color:#ff6b5e}
+.overlay-card.theme-mk11 .stat-rate .stat-number{color:#ff9c5f}
+.overlay-card.theme-mk11 .stat-label,.overlay-card.theme-mk11 .mains-label{color:#d9a9a0;letter-spacing:1.5px}
+.overlay-card.theme-mk11 .main-chip{font-family:'Cinzel',serif;color:#f5d9a4;background:rgba(140,29,29,.3);border:1px solid rgba(224,130,60,.45);border-radius:0}
+.overlay-card.theme-mk11 .detected-chip{font-family:'Cinzel',serif;color:#ffd98c;background:rgba(140,29,29,.32);border:1px solid rgba(240,180,41,.5);border-radius:0}
+.overlay-card.theme-mk11 .team-detected-row{border-bottom:1px solid rgba(224,82,82,.35)}
+.overlay-card.theme-mk11 .detector-live-dot{background:#ff6b5e;box-shadow:0 0 9px rgba(255,107,94,.95)}
+.overlay-card.theme-mk11 .result-toast{font-family:'Cinzel',serif;border-radius:0;background:rgba(22,6,8,.94)}
 
 /* ============ GUILTY GEAR STRIVE · neón magenta y cian, velocidad ============ */
 .overlay-card.theme-ggst{
