@@ -20,6 +20,10 @@ const GAME_LABELS = {
 
 const TEAM_LIMITS = { '2xko': 2, 'ggst': 1, 'mk11': 1 };
 
+// En MK11 el HUD no muestra nombres de personajes, solo etiquetas de jugador:
+// los rivales se registran por su gamertag en lugar del roster.
+const TAG_GAMES = { 'mk11': true };
+
 const ROSTERS = {
   '2xko': new Set([
     'Ahri', 'Akali', 'Blitzcrank', 'Braum', 'Caitlyn', 'Darius', 'Ekko', 'Illaoi',
@@ -145,6 +149,12 @@ function cleanString(value, fallback, max) {
   return cleaned || fallback;
 }
 
+function cleanTag(value) {
+  if (typeof value !== 'string') return '';
+  const cleaned = cleanString(value, '', 18).replace(/[^a-zA-Z0-9 '._\-]/g, '').trim();
+  return cleaned || '';
+}
+
 function rosterNames(game, raw, limit) {
   const roster = ROSTERS[game];
   if (!roster || !Array.isArray(raw)) return [];
@@ -157,17 +167,30 @@ function rosterNames(game, raw, limit) {
   return unique.slice(0, max);
 }
 
+function detectedNames(game, raw) {
+  if (TAG_GAMES[game]) {
+    return Array.isArray(raw)
+      ? raw.map(cleanTag).filter(Boolean).slice(0, TEAM_LIMITS[game] || 1)
+      : [];
+  }
+  return rosterNames(game, raw);
+}
+
 function sanitizeCharStats(game, raw) {
   const out = {};
   const roster = ROSTERS[game];
   if (!roster || !raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  const allowTags = TAG_GAMES[game] === true;
   for (const name of Object.keys(raw)) {
-    if (!roster.has(name)) continue;
+    const key = allowTags ? cleanTag(name) : name;
+    if (!key) continue;
+    if (!allowTags && !roster.has(name)) continue;
     const entry = raw[name] || {};
-    out[name] = {
+    out[key] = {
       wins: Number.isInteger(entry.wins) ? Math.max(0, Math.min(9999, entry.wins)) : 0,
       losses: Number.isInteger(entry.losses) ? Math.max(0, Math.min(9999, entry.losses)) : 0
     };
+    if (Object.keys(out).length >= 50) break;
   }
   return out;
 }
@@ -178,8 +201,8 @@ function sanitizeHistory(game, raw) {
   const entries = raw.slice(-HISTORY_LIMIT).map(entry => ({
     at: Number.isFinite(Number(entry && entry.at)) ? Number(entry.at) : 0,
     result: entry && entry.result === 'win' ? 'win' : 'loss',
-    team: rosterNames(game, entry && entry.team, limit),
-    opponents: rosterNames(game, entry && entry.opponents, limit),
+    team: detectedNames(game, entry && entry.team),
+    opponents: detectedNames(game, entry && entry.opponents),
     source: entry && entry.source === 'auto' ? 'auto' : 'manual'
   }));
   return entries;
@@ -209,11 +232,13 @@ function sanitizeState(input) {
       mains,
       streak: Number.isInteger(incoming.streak) ? Math.max(-999, Math.min(999, incoming.streak)) : oldProfile.streak,
       detectedCharacters: Array.isArray(incoming.detectedCharacters)
-        ? incoming.detectedCharacters.map(name => cleanString(name, '', 22)).filter(Boolean).slice(0, limit)
+        ? detectedNames(game, incoming.detectedCharacters).length || TAG_GAMES[game]
+          ? detectedNames(game, incoming.detectedCharacters)
+          : []
         : (oldProfile.detectedCharacters || []),
       detectedAt: Number.isFinite(Number(incoming.detectedAt)) ? Math.max(0, Number(incoming.detectedAt)) : (oldProfile.detectedAt || 0),
       detectedOpponents: Array.isArray(incoming.detectedOpponents)
-        ? incoming.detectedOpponents.map(name => cleanString(name, '', 22)).filter(Boolean).slice(0, limit)
+        ? detectedNames(game, incoming.detectedOpponents)
         : (oldProfile.detectedOpponents || []),
       detectedOpponentsAt: Number.isFinite(Number(incoming.detectedOpponentsAt)) ? Math.max(0, Number(incoming.detectedOpponentsAt)) : (oldProfile.detectedOpponentsAt || 0),
       matchHistory: sanitizeHistory(game, incoming.matchHistory !== undefined ? incoming.matchHistory : oldProfile.matchHistory),
@@ -376,8 +401,10 @@ const server = http.createServer(async (req, res) => {
       const input = await readJson(req);
       const game = input.game || state.selectedGame;
       if (!Object.hasOwn(GAME_LABELS, game)) return sendJson(res, 400, { ok: false, error: 'Juego no valido.' });
-      const own = rosterNames(game, input.characters);
-      const opponents = rosterNames(game, input.opponents);
+      const own = TAG_GAMES[game] ? [] : rosterNames(game, input.characters);
+      const opponents = TAG_GAMES[game]
+        ? (Array.isArray(input.opponents) ? [cleanTag(input.opponents[0] || '')].filter(Boolean) : [])
+        : rosterNames(game, input.opponents);
       if (!own.length && !opponents.length) return sendJson(res, 400, { ok: false, error: 'No se reconocieron personajes válidos de ' + GAME_LABELS[game] + '.' });
       const profile = state.profiles[game];
       if (own.length) {
@@ -422,7 +449,7 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log('');
-  console.log('Overlay de juegos de pelea v0.6 lista:');
+  console.log('Overlay de juegos de pelea v0.6.1 lista:');
   console.log('  Panel de control: http://127.0.0.1:' + PORT + '/dashboard');
   console.log('  Overlay para OBS: http://127.0.0.1:' + PORT + '/overlay');
   const interfaces = os.networkInterfaces();

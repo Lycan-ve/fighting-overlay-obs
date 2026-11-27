@@ -1,6 +1,6 @@
 {
   "name": "fighting-games-obs-overlay",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "private": true,
   "description": "Tracking y overlay para juegos de pelea: W/L por juego con deteccion automatica por OCR en 2XKO, Guilty Gear Strive y Mortal Kombat 11",
   "scripts": {
