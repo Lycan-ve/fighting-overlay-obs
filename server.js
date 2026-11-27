@@ -14,14 +14,31 @@ const REMOTE_PIN = String(crypto.randomInt(100000, 1000000));
 
 const GAME_LABELS = {
   '2xko': '2XKO',
-  'mk1': 'MORTAL KOMBAT 1',
-  'ggst': 'GUILTY GEAR STRIVE'
+  'ggst': 'GUILTY GEAR STRIVE',
+  'mk11': 'MORTAL KOMBAT 11'
 };
 
-const TWO_XKO_ROSTER = new Set([
-  'Ahri', 'Akali', 'Blitzcrank', 'Braum', 'Caitlyn', 'Darius', 'Ekko', 'Illaoi',
-  'Jinx', 'Lux', 'Samira', 'Senna', 'Sett', 'Teemo', 'Thresh', 'Vi', 'Warwick', 'Yasuo'
-]);
+const TEAM_LIMITS = { '2xko': 2, 'ggst': 1, 'mk11': 1 };
+
+const ROSTERS = {
+  '2xko': new Set([
+    'Ahri', 'Akali', 'Blitzcrank', 'Braum', 'Caitlyn', 'Darius', 'Ekko', 'Illaoi',
+    'Jinx', 'Lux', 'Samira', 'Senna', 'Sett', 'Teemo', 'Thresh', 'Vi', 'Warwick', 'Yasuo'
+  ]),
+  'ggst': new Set([
+    'Sol', 'Ky', 'May', 'Axl', 'Chipp', 'Potemkin', 'Faust', 'Millia', 'Zato',
+    'Ramlethal', 'Leo', 'Nagoriyuki', 'Giovanna', 'Anji', 'I-No', 'Goldlewis',
+    'Jack-O', 'Happy Chaos', 'Baiken', 'Testament', 'Bridget', 'Sin', 'Bedman?',
+    'Asuka', 'Johnny', 'Elphelt', 'A.B.A', 'Slayer', 'Venom', 'Dizzy', 'Unika', 'Lucy'
+  ]),
+  'mk11': new Set([
+    'Scorpion', 'Liu Kang', 'Kung Lao', 'Sub-Zero', 'Raiden', 'Sonya', 'Johnny Cage',
+    'Cassie Cage', 'Jax', 'Jacqui Briggs', 'Baraka', 'Jade', 'Kitana', 'Mileena',
+    'Skarlet', "D'Vorah", 'Kotal Kahn', 'Geras', 'Kollector', 'Noob Saibot', 'Cetrion',
+    'Shao Kahn', 'Frost', 'Erron Black', 'Shang Tsung', 'Nightwolf', 'Sindel',
+    'Terminator', 'Joker', 'Spawn', 'Fujin', 'Sheeva', 'RoboCop', 'Rain', 'Rambo'
+  ])
+};
 
 const HISTORY_LIMIT = 60;
 
@@ -51,8 +68,8 @@ function defaultState() {
     autoApplyMains: false,
     profiles: {
       '2xko': defaultProfile(['Ekko', 'Warwick']),
-      'mk1': defaultProfile([]),
-      'ggst': defaultProfile([])
+      'ggst': defaultProfile([]),
+      'mk11': defaultProfile([])
     },
     lastResult: null,
     updatedAt: Date.now()
@@ -63,6 +80,10 @@ function loadState() {
   try {
     if (!fs.existsSync(DATA_FILE)) return defaultState();
     const parsed = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    // Migración: quien usaba Mortal Kombat 1 (mk1) conserva sus datos como mk11.
+    if (parsed.profiles && parsed.profiles.mk1 && !parsed.profiles.mk11) {
+      parsed.profiles.mk11 = parsed.profiles.mk1;
+    }
     const base = defaultState();
     const merged = { ...base, ...parsed };
     merged.profiles = {};
@@ -124,21 +145,24 @@ function cleanString(value, fallback, max) {
   return cleaned || fallback;
 }
 
-function rosterNames(raw, limit) {
-  if (!Array.isArray(raw)) return [];
+function rosterNames(game, raw, limit) {
+  const roster = ROSTERS[game];
+  if (!roster || !Array.isArray(raw)) return [];
+  const max = limit || TEAM_LIMITS[game] || 1;
   const unique = [];
   for (const name of raw) {
-    const cleaned = cleanString(name, '', 20);
-    if (TWO_XKO_ROSTER.has(cleaned) && !unique.includes(cleaned)) unique.push(cleaned);
+    const cleaned = cleanString(name, '', 22);
+    if (roster.has(cleaned) && !unique.includes(cleaned)) unique.push(cleaned);
   }
-  return unique.slice(0, limit || 2);
+  return unique.slice(0, max);
 }
 
-function sanitizeCharStats(raw) {
+function sanitizeCharStats(game, raw) {
   const out = {};
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  const roster = ROSTERS[game];
+  if (!roster || !raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
   for (const name of Object.keys(raw)) {
-    if (!TWO_XKO_ROSTER.has(name)) continue;
+    if (!roster.has(name)) continue;
     const entry = raw[name] || {};
     out[name] = {
       wins: Number.isInteger(entry.wins) ? Math.max(0, Math.min(9999, entry.wins)) : 0,
@@ -148,13 +172,14 @@ function sanitizeCharStats(raw) {
   return out;
 }
 
-function sanitizeHistory(raw) {
+function sanitizeHistory(game, raw) {
   if (!Array.isArray(raw)) return [];
+  const limit = TEAM_LIMITS[game] || 1;
   const entries = raw.slice(-HISTORY_LIMIT).map(entry => ({
     at: Number.isFinite(Number(entry && entry.at)) ? Number(entry.at) : 0,
     result: entry && entry.result === 'win' ? 'win' : 'loss',
-    team: rosterNames(entry && entry.team),
-    opponents: rosterNames(entry && entry.opponents),
+    team: rosterNames(game, entry && entry.team, limit),
+    opponents: rosterNames(game, entry && entry.opponents, limit),
     source: entry && entry.source === 'auto' ? 'auto' : 'manual'
   }));
   return entries;
@@ -174,6 +199,7 @@ function sanitizeState(input) {
   for (const game of Object.keys(GAME_LABELS)) {
     const oldProfile = state.profiles[game] || next.profiles[game];
     const incoming = input.profiles && input.profiles[game] ? input.profiles[game] : oldProfile;
+    const limit = TEAM_LIMITS[game];
     const mains = Array.isArray(incoming.mains)
       ? incoming.mains.map(name => cleanString(name, '', 22)).filter(Boolean).slice(0, 3)
       : oldProfile.mains;
@@ -183,15 +209,15 @@ function sanitizeState(input) {
       mains,
       streak: Number.isInteger(incoming.streak) ? Math.max(-999, Math.min(999, incoming.streak)) : oldProfile.streak,
       detectedCharacters: Array.isArray(incoming.detectedCharacters)
-        ? incoming.detectedCharacters.map(name => cleanString(name, '', 20)).filter(Boolean).slice(0, 2)
+        ? incoming.detectedCharacters.map(name => cleanString(name, '', 22)).filter(Boolean).slice(0, limit)
         : (oldProfile.detectedCharacters || []),
       detectedAt: Number.isFinite(Number(incoming.detectedAt)) ? Math.max(0, Number(incoming.detectedAt)) : (oldProfile.detectedAt || 0),
       detectedOpponents: Array.isArray(incoming.detectedOpponents)
-        ? incoming.detectedOpponents.map(name => cleanString(name, '', 20)).filter(Boolean).slice(0, 2)
+        ? incoming.detectedOpponents.map(name => cleanString(name, '', 22)).filter(Boolean).slice(0, limit)
         : (oldProfile.detectedOpponents || []),
       detectedOpponentsAt: Number.isFinite(Number(incoming.detectedOpponentsAt)) ? Math.max(0, Number(incoming.detectedOpponentsAt)) : (oldProfile.detectedOpponentsAt || 0),
-      matchHistory: sanitizeHistory(incoming.matchHistory !== undefined ? incoming.matchHistory : oldProfile.matchHistory),
-      charStats: sanitizeCharStats(incoming.charStats !== undefined ? incoming.charStats : oldProfile.charStats)
+      matchHistory: sanitizeHistory(game, incoming.matchHistory !== undefined ? incoming.matchHistory : oldProfile.matchHistory),
+      charStats: sanitizeCharStats(game, incoming.charStats !== undefined ? incoming.charStats : oldProfile.charStats)
     };
   }
   next.lastResult = state.lastResult;
@@ -270,7 +296,8 @@ const server = http.createServer(async (req, res) => {
       if (input.source === 'auto' && state.autoRecord === false) {
         return sendJson(res, 200, { ok: true, skipped: true, reason: 'auto-record-off', state });
       }
-      const profile = state.profiles[state.selectedGame];
+      const game = state.selectedGame;
+      const profile = state.profiles[game];
       profile.charStats = profile.charStats && typeof profile.charStats === 'object' ? profile.charStats : {};
       profile.matchHistory = Array.isArray(profile.matchHistory) ? profile.matchHistory : [];
       if (input.result === 'win') {
@@ -280,8 +307,8 @@ const server = http.createServer(async (req, res) => {
         profile.losses += 1;
         profile.streak = profile.streak < 0 ? profile.streak - 1 : -1;
       }
-      const team = Array.isArray(profile.detectedCharacters) ? profile.detectedCharacters.slice(0, 2) : [];
-      const opponents = Array.isArray(profile.detectedOpponents) ? profile.detectedOpponents.slice(0, 2) : [];
+      const team = Array.isArray(profile.detectedCharacters) ? profile.detectedCharacters.slice(0, TEAM_LIMITS[game]) : [];
+      const opponents = Array.isArray(profile.detectedOpponents) ? profile.detectedOpponents.slice(0, TEAM_LIMITS[game]) : [];
       for (const name of team) {
         const stats = profile.charStats[name] || (profile.charStats[name] = { wins: 0, losses: 0 });
         if (input.result === 'win') stats.wins += 1;
@@ -295,7 +322,7 @@ const server = http.createServer(async (req, res) => {
         source: input.source === 'auto' ? 'auto' : 'manual'
       });
       if (profile.matchHistory.length > HISTORY_LIMIT) profile.matchHistory = profile.matchHistory.slice(-HISTORY_LIMIT);
-      state.lastResult = { result: input.result, game: state.selectedGame, at: Date.now() };
+      state.lastResult = { result: input.result, game, at: Date.now() };
       saveState();
       return sendJson(res, 200, { ok: true, state });
     } catch (error) {
@@ -348,11 +375,11 @@ const server = http.createServer(async (req, res) => {
     try {
       const input = await readJson(req);
       const game = input.game || state.selectedGame;
-      if (game !== '2xko') return sendJson(res, 400, { ok: false, error: 'La detección automática de personajes está configurada para 2XKO.' });
-      const own = rosterNames(input.characters);
-      const opponents = rosterNames(input.opponents);
-      if (!own.length && !opponents.length) return sendJson(res, 400, { ok: false, error: 'No se reconocieron personajes válidos de 2XKO.' });
-      const profile = state.profiles['2xko'];
+      if (!Object.hasOwn(GAME_LABELS, game)) return sendJson(res, 400, { ok: false, error: 'Juego no valido.' });
+      const own = rosterNames(game, input.characters);
+      const opponents = rosterNames(game, input.opponents);
+      if (!own.length && !opponents.length) return sendJson(res, 400, { ok: false, error: 'No se reconocieron personajes válidos de ' + GAME_LABELS[game] + '.' });
+      const profile = state.profiles[game];
       if (own.length) {
         profile.detectedCharacters = own;
         profile.detectedAt = Date.now();
@@ -395,7 +422,7 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log('');
-  console.log('Overlay de juegos de pelea v0.4 lista:');
+  console.log('Overlay de juegos de pelea v0.6 lista:');
   console.log('  Panel de control: http://127.0.0.1:' + PORT + '/dashboard');
   console.log('  Overlay para OBS: http://127.0.0.1:' + PORT + '/overlay');
   const interfaces = os.networkInterfaces();
