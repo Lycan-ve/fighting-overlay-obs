@@ -24,6 +24,8 @@ let oppTag = '';
 let oppTagCount = 0;
 let autoGameCandidate = '';
 let autoGameCandidateCount = 0;
+let diffCanvas = null;
+let lastDiffData = null;
 
 const SCAN_PHASES = ['team', 'result', 'opponents', 'result'];
 const RESULT_COOLDOWN_MS = 10000;
@@ -857,11 +859,66 @@ async function scanResultFrame() {
   }
 }
 
+// Cámara virtual de OBS: el detector lee la captura que OBS ya hace para la
+// transmisión, sin compartir la ventana en el navegador. Busca un dispositivo
+// de vídeo cuyo nombre contenga OBS o Virtual; si faltan permisos, los pide
+// una sola vez para poder ver los nombres.
+async function openVirtualCamera() {
+  let cameras = (await navigator.mediaDevices.enumerateDevices()).filter(device => device.kind === 'videoinput');
+  let obsCamera = cameras.find(device => /obs|virtual/i.test(device.label));
+  if (!obsCamera && cameras.some(device => !device.label)) {
+    const probe = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }).catch(() => null);
+    if (probe) probe.getTracks().forEach(track => track.stop());
+    cameras = (await navigator.mediaDevices.enumerateDevices()).filter(device => device.kind === 'videoinput');
+    obsCamera = cameras.find(device => /obs|virtual/i.test(device.label));
+  }
+  if (!obsCamera) {
+    throw new Error('No se encontró la cámara virtual de OBS. En OBS pulsa Iniciar cámara virtual y vuelve a intentarlo.');
+  }
+  return navigator.mediaDevices.getUserMedia({
+    video: { deviceId: { exact: obsCamera.deviceId }, width: { ideal: 1920 } },
+    audio: false
+  });
+}
+
+// Comparación barata de fotogramas: si la pantalla no cambió desde la lectura
+// anterior, no tiene sentido gastar CPU en otro OCR.
+function frameChanged(video) {
+  if (!video.videoWidth) return false;
+  if (!diffCanvas) {
+    diffCanvas = document.createElement('canvas');
+    diffCanvas.width = 64;
+    diffCanvas.height = 36;
+  }
+  const context = diffCanvas.getContext('2d', { willReadFrequently: true });
+  context.drawImage(video, 0, 0, diffCanvas.width, diffCanvas.height);
+  const data = context.getImageData(0, 0, diffCanvas.width, diffCanvas.height).data;
+  if (lastDiffData) {
+    let changes = 0;
+    for (let index = 0; index < data.length; index += 4) {
+      if (Math.abs(data[index] - lastDiffData[index]) > 12
+        || Math.abs(data[index + 1] - lastDiffData[index + 1]) > 12
+        || Math.abs(data[index + 2] - lastDiffData[index + 2]) > 12) changes += 1;
+      if (changes > 6) break;
+    }
+    if (changes <= 6) {
+      lastDiffData = data;
+      return false;
+    }
+  }
+  lastDiffData = data;
+  return true;
+}
+
 async function scanFrame() {
   if (!detectorRunning || !ocrWorker) return;
   const phase = SCAN_PHASES[scanPhaseIndex % SCAN_PHASES.length];
   scanPhaseIndex += 1;
   try {
+    if (!frameChanged($('capture-video'))) {
+      setDetectorStatus('Sin cambios en la pantalla: esperando al siguiente ciclo…', 'scanning');
+      return;
+    }
     if (phase === 'team') await scanTeamFrame();
     else if (phase === 'opponents') await scanOpponentFrame();
     else await scanResultFrame();
@@ -877,6 +934,8 @@ async function stopDetector(message) {
   if (scanTimer) window.clearTimeout(scanTimer);
   scanTimer = null;
   scanPhaseIndex = 0;
+  lastDiffData = null;
+  diffCanvas = null;
   stableCandidate = '';
   stableCandidateCount = 0;
   lastPostedCandidate = '';
@@ -921,11 +980,17 @@ async function startDetector() {
   }
 
   try {
-    setDetectorStatus('Selecciona la ventana de ' + (GAME_NAMES[game] || 'tu juego') + ' en el cuadro del navegador…', 'scanning');
-    captureStream = await navigator.mediaDevices.getDisplayMedia({
-      video: { frameRate: { ideal: 5, max: 10 } },
-      audio: false
-    });
+    const captureSource = $('capture-source').value || 'window';
+    if (captureSource === 'virtualcam') {
+      setDetectorStatus('Buscando la cámara virtual de OBS…', 'scanning');
+      captureStream = await openVirtualCamera();
+    } else {
+      setDetectorStatus('Selecciona la ventana de ' + (GAME_NAMES[game] || 'tu juego') + ' en el cuadro del navegador…', 'scanning');
+      captureStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: { ideal: 5, max: 10 } },
+        audio: false
+      });
+    }
     const video = $('capture-video');
     video.srcObject = captureStream;
     await video.play();
@@ -935,6 +1000,8 @@ async function startDetector() {
     $('start-detection').hidden = true;
     $('stop-detection').hidden = false;
     scanPhaseIndex = 0;
+  lastDiffData = null;
+  diffCanvas = null;
     stableCandidate = '';
     stableCandidateCount = 0;
     lastPostedCandidate = '';

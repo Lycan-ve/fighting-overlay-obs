@@ -1,4 +1,4 @@
-# Fighting Overlay OBS — v0.9
+# Fighting Overlay OBS — v0.10
 
 Overlay y tracking local para OBS: marcador W/L, win rate, racha, historial de partidas, estadísticas y **detección automática por OCR** en 2XKO, Guilty Gear Strive y Mortal Kombat 11. Cada juego tiene su propio tema visual, y los mains y personajes detectados muestran retratos: iconos locales incluidos en `public/Assest` para Guilty Gear Strive y retratos del repositorio Hot-Coffee-Frontend para 2XKO (en MK11 el HUD no muestra personajes, así que se usan gamertags; sus iconos usan IDs numéricos y se activan rellenando `public/Assest/MK 11/names.json`).
 
@@ -55,6 +55,8 @@ El registro puede ser manual (botones del panel o del teléfono), automático po
 ## Detección automática por OCR (los tres juegos)
 
 Con la detección activa, el panel alterna la lectura entre tres zonas de la ventana compartida: tu lado del HUD, el lado del rival y la zona central de resultado.
+
+**Fuente de captura (v0.10):** en el panel eliges de dónde lee el detector. Además de compartir la ventana del juego, puedes usar la **cámara virtual de OBS**: activa en OBS el botón Iniciar cámara virtual y elige esa opción; así el detector lee la captura que OBS ya hace para tu transmisión, sin compartir la ventana en el navegador (ahorra FPS mientras emites). El panel pedirá permiso de cámara una sola vez para poder encontrar la cámara virtual. Además, el detector salta las lecturas cuando la pantalla no cambia, para gastar menos CPU.
 
 1.  Guarda el juego activo en el panel.
 2.  Pulsa **Iniciar detección** y comparte la ventana del juego en el selector de Chrome/Edge.
