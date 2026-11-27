@@ -18,6 +18,10 @@ let stableResult = '';
 let stableResultCount = 0;
 let lastAutoResultAt = 0;
 let latestDetected = [];
+let ownTag = '';
+let ownTagCount = 0;
+let oppTag = '';
+let oppTagCount = 0;
 
 const SCAN_PHASES = ['team', 'result', 'opponents', 'result'];
 const RESULT_COOLDOWN_MS = 10000;
@@ -44,11 +48,14 @@ const CHAMPIONS_MK11 = [
   'Terminator', 'Joker', 'Spawn', 'Fujin', 'Sheeva', 'RoboCop', 'Rain', 'Rambo'
 ];
 
-// Configuración de detección por juego: roster, tamaño de equipo, zonas del HUD
-// y de la pantalla de resultado (proporciones del ancho/alto de la ventana).
-// Ajusta estos valores con las vistas de diagnóstico del panel si un recorte queda desplazado.
+// Configuración de detección por juego, medida sobre las capturas de HUD del canal.
+// Son proporciones del ancho/alto de la ventana compartida; ajusta con las vistas
+// de diagnóstico si un recorte queda desplazado.
+// mode 'roster': busca nombres de personajes. mode 'tags': lee etiquetas de jugador
+// (el HUD de MK11 no muestra personajes, solo gamertags).
 const GAME_DETECT = {
   '2xko': {
+    mode: 'roster',
     roster: CHAMPIONS_2XKO,
     teamSize: 2,
     hud: { left: { x: 0.105, y: 0.058, w: 0.335, h: 0.084 }, right: { x: 0.65, y: 0.058, w: 0.335, h: 0.084 } },
@@ -57,24 +64,24 @@ const GAME_DETECT = {
     lossWords: ['defeat', 'derrota', 'youlose', 'loser']
   },
   'ggst': {
+    mode: 'roster',
     roster: CHAMPIONS_GGST,
     teamSize: 1,
-    hud: { left: { x: 0.02, y: 0.02, w: 0.30, h: 0.07 }, right: { x: 0.68, y: 0.02, w: 0.30, h: 0.07 } },
-    result: { x: 0.20, y: 0.20, w: 0.60, h: 0.50 },
+    hud: { left: { x: 0.07, y: 0.08, w: 0.17, h: 0.055 }, right: { x: 0.78, y: 0.08, w: 0.17, h: 0.055 } },
+    result: { x: 0.25, y: 0.30, w: 0.50, h: 0.40 },
     winWords: ['youwin', 'win', 'wins'],
     lossWords: ['youlose', 'lose', 'defeat']
   },
   'mk11': {
+    mode: 'tags',
     roster: CHAMPIONS_MK11,
     teamSize: 1,
-    hud: { left: { x: 0.05, y: 0.02, w: 0.26, h: 0.07 }, right: { x: 0.69, y: 0.02, w: 0.26, h: 0.07 } },
-    result: { x: 0.20, y: 0.20, w: 0.60, h: 0.50 },
+    hud: { left: { x: 0.055, y: 0.06, w: 0.20, h: 0.075 }, right: { x: 0.72, y: 0.06, w: 0.20, h: 0.075 } },
+    result: { x: 0.22, y: 0.30, w: 0.56, h: 0.38 },
     winWords: ['victory', 'youwin', 'wins', 'winner'],
     lossWords: ['defeat', 'youlose', 'loser']
   }
 };
-
-const FIGHTER_ASSET_ROSTERS = { '2xko': CHAMPIONS_2XKO, ggst: CHAMPIONS_GGST, mk11: CHAMPIONS_MK11 };
 
 function rosterFor(game) {
   const config = GAME_DETECT[game];
@@ -543,6 +550,24 @@ function findResult(text, game) {
   return '';
 }
 
+// MK11: el banner final muestra "ETIQUETA WINS". Compara con las etiquetas leídas
+// en el HUD para atribuir la victoria o la derrota.
+function tagKeyWords(tag) {
+  return (normalizeText(tag).match(/[a-z0-9]+/g) || []).filter(token => token.length >= 4);
+}
+
+function findTagResult(text) {
+  const compact = normalizeText(text).replace(/[^a-z0-9]/g, '');
+  if (!compact) return '';
+  if (compact.includes('defeat') || compact.includes('youlose')) return 'loss';
+  if (!compact.includes('wins') && !compact.includes('victory')) return '';
+  const ownHit = tagKeyWords(ownTag).some(token => compact.includes(token));
+  const oppHit = tagKeyWords(oppTag).some(token => compact.includes(token));
+  if (ownHit && !oppHit) return 'win';
+  if (oppHit && !ownHit) return 'loss';
+  return '';
+}
+
 function drawCrop(video, crop, canvas) {
   if (!video.videoWidth || !video.videoHeight || !canvas) return null;
   const context = canvas.getContext('2d', { willReadFrequently: true });
@@ -556,18 +581,25 @@ function activeGame() {
   return currentState ? currentState.selectedGame : $('game-select').value;
 }
 
+function detectConfig() {
+  return GAME_DETECT[activeGame()] || GAME_DETECT['2xko'];
+}
+
 function prepareTeamCrop(side, canvas) {
   const video = $('capture-video');
   if (!video.videoWidth || !video.videoHeight) return null;
-  const config = GAME_DETECT[activeGame()] || GAME_DETECT['2xko'];
-  return drawCrop(video, config.hud[side] || config.hud.left, canvas);
+  return drawCrop(video, detectConfig().hud[side] || detectConfig().hud.left, canvas);
 }
 
 function prepareResultCrop() {
   const video = $('capture-video');
   if (!video.videoWidth || !video.videoHeight) return null;
-  const config = GAME_DETECT[activeGame()] || GAME_DETECT['2xko'];
-  return drawCrop(video, config.result, $('result-crop-preview'));
+  return drawCrop(video, detectConfig().result, $('result-crop-preview'));
+}
+
+function resetResultDebounce() {
+  stableResult = '';
+  stableResultCount = 0;
 }
 
 async function postDetectedCharacters(names) {
@@ -578,13 +610,13 @@ async function postDetectedCharacters(names) {
   showDetected(names, null);
   setDetectorStatus('Personajes reconocidos: ' + names.join(' + '), 'active');
   // Nuevo personaje en pantalla = nueva partida: reinicia el debounce de resultados.
-  stableResult = '';
-  stableResultCount = 0;
+  resetResultDebounce();
 }
 
 async function scanTeamFrame() {
   if (!ocrWorker) return;
   const game = activeGame();
+  const config = detectConfig();
   const side = $('hud-side').value;
   const canvas = prepareTeamCrop(side, $('ocr-crop-preview'));
   if (!canvas) throw new Error('Esperando imagen de la ventana compartida…');
@@ -592,6 +624,21 @@ async function scanTeamFrame() {
   const text = (result && result.data && result.data.text) || '';
   const confidence = result && result.data ? result.data.confidence : undefined;
   $('ocr-text').textContent = text.trim() || '(No se reconoció texto en este recorte)';
+
+  if (config.mode === 'tags') {
+    const candidate = text.trim().replace(/\s+/g, ' ');
+    if (candidate.length >= 3) {
+      if (candidate === ownTag) ownTagCount += 1;
+      else {
+        ownTag = candidate;
+        ownTagCount = 1;
+      }
+      setDetectorStatus(ownTagCount >= 2 ? 'Tu etiqueta: ' + candidate : 'Leyendo tu etiqueta…', 'scanning');
+    }
+    showDetected([], confidence);
+    return;
+  }
+
   const names = findRosterNames(text, game);
   showDetected(names, confidence);
 
@@ -617,6 +664,7 @@ async function scanTeamFrame() {
 async function scanOpponentFrame() {
   if (!ocrWorker) return;
   const game = activeGame();
+  const config = detectConfig();
   const side = $('hud-side').value === 'left' ? 'right' : 'left';
   const canvas = prepareTeamCrop(side, $('ocr-opponent-preview'));
   if (!canvas) throw new Error('Esperando imagen de la ventana compartida…');
@@ -624,6 +672,26 @@ async function scanOpponentFrame() {
   const text = (result && result.data && result.data.text) || '';
   const opponentText = $('opponent-text');
   if (opponentText) opponentText.textContent = text.trim() || '(Sin texto en el lado rival)';
+
+  if (config.mode === 'tags') {
+    const candidate = text.trim().replace(/\s+/g, ' ');
+    if (candidate.length >= 3) {
+      if (candidate === oppTag) oppTagCount += 1;
+      else {
+        oppTag = candidate;
+        oppTagCount = 1;
+      }
+      if (oppTagCount >= 2 && oppTag !== lastPostedOpponent) {
+        const saved = await api('/api/detected-characters', { game, opponents: [candidate] });
+        lastUpdatedAt = saved.updatedAt;
+        render(saved);
+        lastPostedOpponent = oppTag;
+        setDetectorStatus('Rival: ' + candidate, 'scanning');
+      }
+    }
+    return;
+  }
+
   const names = findRosterNames(text, game);
   if (names.length) {
     const signature = names.join('|');
@@ -648,16 +716,20 @@ async function scanOpponentFrame() {
 async function scanResultFrame() {
   if (!ocrWorker) return;
   const game = activeGame();
+  const config = detectConfig();
   const canvas = prepareResultCrop();
   if (!canvas) throw new Error('Esperando imagen de la ventana compartida…');
   const result = await ocrWorker.recognize(canvas);
   const text = (result && result.data && result.data.text) || '';
   const resultText = $('result-text');
   if (resultText) resultText.textContent = text.trim() || '(Sin texto en la zona de resultado)';
-  const verdict = findResult(text, game);
+  const verdict = config.mode === 'tags' ? findTagResult(text) : findResult(text, game);
   if (!verdict) {
-    stableResult = '';
-    stableResultCount = 0;
+    const compact = normalizeText(text).replace(/[^a-z0-9]/g, '');
+    if (config.mode === 'tags' && (compact.includes('wins') || compact.includes('victory'))) {
+      setDetectorStatus('Pantalla de resultado sin atribuir: todavía no leí las etiquetas de los jugadores.', 'scanning');
+    }
+    resetResultDebounce();
     return;
   }
   if (verdict === stableResult) stableResultCount += 1;
@@ -671,8 +743,7 @@ async function scanResultFrame() {
   }
   if (Date.now() - lastAutoResultAt < RESULT_COOLDOWN_MS) return;
   lastAutoResultAt = Date.now();
-  stableResult = '';
-  stableResultCount = 0;
+  resetResultDebounce();
   if (!currentState || currentState.autoRecord === false) {
     setDetectorStatus('Resultado detectado (' + (verdict === 'win' ? 'VICTORIA' : 'DERROTA') + ') pero el registro automático está apagado.', 'scanning');
     return;
@@ -715,6 +786,10 @@ async function stopDetector(message) {
   lastPostedOpponent = '';
   stableResult = '';
   stableResultCount = 0;
+  ownTag = '';
+  ownTagCount = 0;
+  oppTag = '';
+  oppTagCount = 0;
   if (captureStream) {
     captureStream.getTracks().forEach(track => track.stop());
     captureStream = null;
@@ -768,6 +843,10 @@ async function startDetector() {
     lastPostedOpponent = '';
     stableResult = '';
     stableResultCount = 0;
+    ownTag = '';
+    ownTagCount = 0;
+    oppTag = '';
+    oppTagCount = 0;
     setDetectorStatus('Preparando OCR en el navegador…', 'scanning');
     ocrWorker = await window.Tesseract.createWorker('eng', 1, {
       logger: message => {
@@ -781,7 +860,7 @@ async function startDetector() {
     await ocrWorker.setParameters({
       tessedit_pageseg_mode: '6',
       preserve_interword_spaces: '1',
-      tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz '
+      tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz 0123456789\'.-'
     });
     const track = captureStream.getVideoTracks()[0];
     if (track) track.addEventListener('ended', () => {
@@ -828,8 +907,11 @@ $('hud-side').addEventListener('change', () => {
   stableOpponent = '';
   stableOpponentCount = 0;
   lastPostedOpponent = '';
-  stableResult = '';
-  stableResultCount = 0;
+  resetResultDebounce();
+  ownTag = '';
+  ownTagCount = 0;
+  oppTag = '';
+  oppTagCount = 0;
 });
 $('game-select').addEventListener('change', () => {
   const game = $('game-select').value;
