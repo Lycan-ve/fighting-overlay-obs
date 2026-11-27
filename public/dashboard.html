@@ -40,18 +40,18 @@
           <label class="field-label" for="game-select">Juego activo</label>
           <select id="game-select" class="text-input">
             <option value="2xko">2XKO</option>
-            <option value="mk1">Mortal Kombat 1</option>
             <option value="ggst">Guilty Gear Strive</option>
+            <option value="mk11">Mortal Kombat 11</option>
           </select>
           <label class="field-label" for="mains-input">Mis mains <span>máximo 3, separados por coma</span></label>
           <input id="mains-input" class="text-input" maxlength="75" placeholder="Ej. Ekko, Warwick">
           <div id="main-picker-wrap">
-            <div class="fighter-picker-heading"><span>ELIGE TUS MAINS · 2XKO</span><small>Hasta 3 · pulsa los retratos</small></div>
+            <div class="fighter-picker-heading"><span id="picker-title">ELIGE TUS MAINS · 2XKO</span><small>Hasta 3 · pulsa los retratos</small></div>
             <div id="main-picker" class="fighter-picker" aria-label="Seleccionar personajes principales"></div>
             <p class="picker-hint" id="picker-hint">Selecciona hasta tres personajes. También puedes escribir sus nombres arriba.</p>
           </div>
           <div class="toggle-row">
-            <div class="toggle-copy"><strong>Aplicar mains automáticamente</strong><small>Cuando el detector confirma tu equipo en pantalla, se guarda como tus mains sin pulsar nada. Se puede seguir editando a mano.</small></div>
+            <div class="toggle-copy"><strong>Aplicar mains automáticamente</strong><small>Cuando el detector confirma tu personaje o equipo en pantalla, se guarda como tus mains sin pulsar nada. Se puede seguir editando a mano.</small></div>
             <label class="switch"><input type="checkbox" id="auto-apply-toggle"><span class="track"></span><span class="thumb"></span></label>
           </div>
           <button id="save-profile" class="button button-primary">Guardar perfil <span>↗</span></button>
@@ -63,7 +63,7 @@
             <div><div class="eyebrow">LECTURA DEL HUD</div><h2>Detección automática</h2></div>
             <span class="section-mark">02</span>
           </div>
-          <p class="section-description">Comparte la ventana de 2XKO. Con la detección activa, el lector identifica tu equipo, al equipo rival y el resultado de cada partida, todo automáticamente.</p>
+          <p class="section-description">Comparte la ventana del juego activo. Con la detección activa, el lector identifica tu personaje o equipo, al rival y el resultado de cada partida, todo automáticamente. Experimental: usa las vistas de diagnóstico para afinar los recortes.</p>
           <label class="field-label" for="hud-side">¿En qué lado aparece tu jugador?</label>
           <select id="hud-side" class="text-input">
             <option value="left">Izquierda · como en tu escena</option>
@@ -79,7 +79,7 @@
             <div class="detected-list" id="detected-list"><span class="detected-empty">Aún no hay personajes detectados</span></div>
           </div>
           <div class="ocr-preview-wrap">
-            <div class="ocr-preview-label">RECORTE DEL HUD · TU EQUIPO</div>
+            <div class="ocr-preview-label">RECORTE DEL HUD · TU LADO</div>
             <canvas id="ocr-crop-preview" width="960" height="135"></canvas>
           </div>
           <div class="ocr-preview-wrap">
@@ -92,7 +92,7 @@
           </div>
           <button id="apply-detected" class="button button-secondary" disabled>Usar personajes detectados como mis mains</button>
           <details class="ocr-details">
-            <summary>Ver texto reconocido · equipo</summary>
+            <summary>Ver texto reconocido · tu lado</summary>
             <pre id="ocr-text">Esperando captura…</pre>
           </details>
           <details class="ocr-details">
@@ -108,12 +108,12 @@
 
         <section class="panel-section">
           <div class="section-heading">
-            <div><div class="eyebrow">REGISTRO DE PARTIDAS</div><h2>Actualizar marcador</h2></div>
+            <div><div class="eyebrow">TRACKING DE PARTIDAS</div><h2>Actualizar marcador</h2></div>
             <span class="section-mark">03</span>
           </div>
           <p class="section-description">Con la detección activa, cada partida se registra sola al aparecer la pantalla de resultado. También puedes registrar a mano o desde el teléfono.</p>
           <div class="toggle-row">
-            <div class="toggle-copy"><strong>Registro automático de resultados</strong><small>Dos lecturas seguidas de VICTORY o DEFEAT en la pantalla final registran la partida. Incluye un enfriamiento de 10 segundos para evitar duplicados.</small></div>
+            <div class="toggle-copy"><strong>Registro automático de resultados</strong><small>Dos lecturas seguidas de la pantalla final (VICTORY / DEFEAT / WIN / LOSE según el juego) registran la partida. Incluye un enfriamiento de 10 segundos para evitar duplicados.</small></div>
             <label class="switch"><input type="checkbox" id="auto-record-toggle" checked><span class="track"></span><span class="thumb"></span></label>
           </div>
           <div class="result-buttons">
@@ -127,6 +127,7 @@
             <div><span>WIN RATE</span><strong id="summary-rate">0%</strong></div>
             <div><span>RACHA</span><strong id="summary-streak">—</strong></div>
           </div>
+          <div class="empty-note" id="today-note">HOY: sin partidas registradas todavía.</div>
           <div class="history-heading">HISTORIAL DE PARTIDAS</div>
           <div id="history-list" class="history-list"></div>
           <div class="history-heading">RENDIMIENTO POR PERSONAJE</div>
@@ -184,11 +185,11 @@
         </section>
         <section class="notice-panel">
           <div class="notice-icon">✧</div>
-          <div><strong>Un diseño por juego · Automatización v0.5</strong><p>Cada juego tiene su propio tema visual: 2XKO ámbar, Mortal Kombat 1 sangre y oro, Guilty Gear Strive neón. Mientras la detección esté activa, el sistema lee tu equipo, el de los rivales y el resultado de cada partida. Si registra algo mal, usa Deshacer última partida.</p></div>
+          <div><strong>Tracking v0.6 · Un diseño por juego</strong><p>W/L, historial y detección automática para 2XKO, Guilty Gear Strive y Mortal Kombat 11. Los recortes del OCR se ajustan en las vistas de diagnóstico; si registra algo mal, usa Deshacer última partida.</p></div>
         </section>
       </aside>
     </main>
-    <footer class="dashboard-footer"><span>FIGHTING OVERLAY <b>v0.5</b></span><span>Datos guardados localmente en este equipo.</span></footer>
+    <footer class="dashboard-footer"><span>FIGHTING OVERLAY <b>v0.6</b></span><span>Datos guardados localmente en este equipo.</span></footer>
   </div>
   <video id="capture-video" muted playsinline></video>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
