@@ -5,6 +5,18 @@ const FIGHTER_ASSET_BASE = 'https://raw.githubusercontent.com/Lycan-ve/Hot-Coffe
 // Iconos locales de Guilty Gear Strive dentro del propio repo (public/Assest).
 const GGST_ASSET_PATH = '/Assest/' + encodeURIComponent('Guilty Gear Strive') + '/';
 const GGST_ICON_KEYS = { 'A.B.A': 'ABA', 'Bedman?': 'Bed', 'Happy Chaos': 'HappyChaos' };
+
+// Iconos locales de MK11: names.json mapea nombre de personaje a su ID numérico.
+const MK11_ASSET_PATH = '/Assest/' + encodeURIComponent('MK 11') + '/';
+let mk11PortraitMap = {};
+let lastRenderedState = null;
+fetch(MK11_ASSET_PATH + 'names.json', { cache: 'no-store' })
+  .then(response => response.ok ? response.json() : {})
+  .then(map => {
+    mk11PortraitMap = map && typeof map === 'object' ? map : {};
+    if (lastRenderedState) render(lastRenderedState);
+  })
+  .catch(() => { mk11PortraitMap = {}; });
 const CHAMPIONS_2XKO = new Set(['Ahri','Akali','Blitzcrank','Braum','Caitlyn','Darius','Ekko','Illaoi','Jinx','Lux','Samira','Senna','Sett','Teemo','Thresh','Vi','Warwick','Yasuo']);
 const CHAMPIONS_GGST = new Set(['Sol','Ky','May','Axl','Chipp','Potemkin','Faust','Millia','Zato','Ramlethal','Leo','Nagoriyuki','Giovanna','Anji','I-No','Goldlewis','Jack-O','Happy Chaos','Baiken','Testament','Bridget','Sin','Bedman?','Asuka','Johnny','Elphelt','A.B.A','Slayer','Venom','Dizzy','Unika','Lucy']);
 
@@ -12,6 +24,10 @@ function fighterAssetUrl(name, game) {
   if (game === 'ggst') {
     if (!CHAMPIONS_GGST.has(name)) return '';
     return GGST_ASSET_PATH + 'icon_' + encodeURIComponent(GGST_ICON_KEYS[name] || name) + '_0.png';
+  }
+  if (game === 'mk11') {
+    const iconId = mk11PortraitMap[name];
+    return iconId ? MK11_ASSET_PATH + '175816_' + encodeURIComponent(iconId) + '_0.png' : '';
   }
   if (!CHAMPIONS_2XKO.has(name)) return '';
   return FIGHTER_ASSET_BASE + encodeURIComponent(name) + '.png';
@@ -50,6 +66,7 @@ function appendChips(container, values, className, game) {
 }
 
 function render(state) {
+  lastRenderedState = state;
   const profile = state.profiles[state.selectedGame];
   if (!profile) return;
 

@@ -34,6 +34,19 @@ const GGST_ASSET_PATH = '/Assest/' + encodeURIComponent('Guilty Gear Strive') + 
 // Nombres del roster cuyo archivo de icono usa una clave distinta.
 const GGST_ICON_KEYS = { 'A.B.A': 'ABA', 'Bedman?': 'Bed', 'Happy Chaos': 'HappyChaos' };
 
+// Iconos locales de MK11 (public/Assest/MK 11). Los archivos usan IDs numéricos
+// del atlas del juego; names.json mapea nombre de personaje a ese ID. Si un
+// personaje no está en el mapa, su chip muestra solo el nombre.
+const MK11_ASSET_PATH = '/Assest/' + encodeURIComponent('MK 11') + '/';
+let mk11PortraitMap = {};
+fetch(MK11_ASSET_PATH + 'names.json', { cache: 'no-store' })
+  .then(response => response.ok ? response.json() : {})
+  .then(map => {
+    mk11PortraitMap = map && typeof map === 'object' ? map : {};
+    if (currentState) render(currentState);
+  })
+  .catch(() => { mk11PortraitMap = {}; });
+
 // Rosters por juego para el OCR (nombres tal como aparecen en el HUD).
 const CHAMPIONS_2XKO = [
   'Ahri', 'Akali', 'Blitzcrank', 'Braum', 'Caitlyn', 'Darius', 'Ekko', 'Illaoi',
@@ -113,6 +126,10 @@ function fighterAssetUrl(name, game) {
   if (game === 'ggst') {
     if (!CHAMPIONS_GGST.includes(name)) return '';
     return GGST_ASSET_PATH + 'icon_' + encodeURIComponent(GGST_ICON_KEYS[name] || name) + '_0.png';
+  }
+  if (game === 'mk11') {
+    const iconId = mk11PortraitMap[name];
+    return iconId ? MK11_ASSET_PATH + '175816_' + encodeURIComponent(iconId) + '_0.png' : '';
   }
   if (!CHAMPIONS_2XKO.includes(name)) return '';
   return FIGHTER_ASSET_BASE + encodeURIComponent(name) + '.png';

@@ -1,6 +1,6 @@
-# Fighting Overlay OBS — v0.6.2
+# Fighting Overlay OBS — v0.6.3
 
-Overlay y tracking local para OBS: marcador W/L, win rate, racha, historial de partidas, estadísticas y **detección automática por OCR** en 2XKO, Guilty Gear Strive y Mortal Kombat 11. Cada juego tiene su propio tema visual, y los mains y personajes detectados muestran retratos: iconos locales incluidos en `public/Assest` para Guilty Gear Strive y retratos del repositorio Hot-Coffee-Frontend para 2XKO (en MK11 el HUD no muestra personajes, así que se usan gamertags).
+Overlay y tracking local para OBS: marcador W/L, win rate, racha, historial de partidas, estadísticas y **detección automática por OCR** en 2XKO, Guilty Gear Strive y Mortal Kombat 11. Cada juego tiene su propio tema visual, y los mains y personajes detectados muestran retratos: iconos locales incluidos en `public/Assest` para Guilty Gear Strive y retratos del repositorio Hot-Coffee-Frontend para 2XKO (en MK11 el HUD no muestra personajes, así que se usan gamertags; sus iconos usan IDs numéricos y se activan rellenando `public/Assest/MK 11/names.json`).
 
 ## Temas por juego
 
