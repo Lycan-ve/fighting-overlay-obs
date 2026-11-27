@@ -29,3 +29,6 @@
 .char-stat-line{color:#9eac9f;font-size:11.5px;margin-top:3px}
 .char-stat-bar{height:4px;border-radius:999px;background:#223026;margin-top:8px;overflow:hidden}
 .char-stat-bar span{display:block;height:100%;background:#4bd39a}
+/* v0.9 · Configuración del reinicio de sesión */
+
+.session-reset-row{display:flex;flex-direction:column;gap:8px;padding:11px 13px;border:1px solid #3a4a3f;border-radius:12px;background:#152019;margin:12px 0 4px}

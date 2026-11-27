@@ -70,6 +70,9 @@ function defaultState() {
     opacity: 94,
     autoRecord: true,
     autoApplyMains: false,
+    gameAutoDetect: false,
+    sessionResetMode: 'manual',
+    sessionIdleMinutes: 30,
     profiles: {
       '2xko': defaultProfile(['Ekko', 'Warwick']),
       'ggst': defaultProfile([]),
@@ -218,6 +221,9 @@ function sanitizeState(input) {
   next.opacity = Number.isFinite(Number(input.opacity)) ? Math.min(100, Math.max(35, Number(input.opacity))) : state.opacity;
   next.autoRecord = typeof input.autoRecord === 'boolean' ? input.autoRecord : state.autoRecord;
   next.autoApplyMains = typeof input.autoApplyMains === 'boolean' ? input.autoApplyMains : state.autoApplyMains;
+  next.gameAutoDetect = typeof input.gameAutoDetect === 'boolean' ? input.gameAutoDetect : state.gameAutoDetect;
+  next.sessionResetMode = ['manual', 'daily', 'idle'].includes(input.sessionResetMode) ? input.sessionResetMode : (state.sessionResetMode || 'manual');
+  next.sessionIdleMinutes = Number.isFinite(Number(input.sessionIdleMinutes)) ? Math.min(720, Math.max(1, Math.round(Number(input.sessionIdleMinutes)))) : (state.sessionIdleMinutes || 30);
 
   for (const game of Object.keys(GAME_LABELS)) {
     const oldProfile = state.profiles[game] || next.profiles[game];
@@ -247,6 +253,33 @@ function sanitizeState(input) {
   }
   next.lastResult = state.lastResult;
   return next;
+}
+
+function resetSessionCounters(profile) {
+  profile.wins = 0;
+  profile.losses = 0;
+  profile.streak = 0;
+}
+
+// Reinicio automático del marcador de sesión (configurable en el panel):
+// 'daily' vuelve a cero con la primera partida del día y 'idle' tras X minutos sin partidas.
+function autoResetSessionIfNeeded(profile) {
+  const mode = state.sessionResetMode;
+  if (mode !== 'daily' && mode !== 'idle') return false;
+  const history = Array.isArray(profile.matchHistory) ? profile.matchHistory : [];
+  const lastAt = history.length ? history[history.length - 1].at : 0;
+  if (!lastAt) return false;
+  let shouldReset = false;
+  if (mode === 'daily') {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    shouldReset = lastAt < startOfDay.getTime();
+  } else {
+    const minutes = Math.max(1, Math.min(720, state.sessionIdleMinutes || 30));
+    shouldReset = Date.now() - lastAt >= minutes * 60000;
+  }
+  if (shouldReset) resetSessionCounters(profile);
+  return shouldReset;
 }
 
 const MIME_TYPES = {
@@ -328,6 +361,7 @@ const server = http.createServer(async (req, res) => {
       }
       const game = state.selectedGame;
       const profile = state.profiles[game];
+      autoResetSessionIfNeeded(profile);
       profile.charStats = profile.charStats && typeof profile.charStats === 'object' ? profile.charStats : {};
       profile.matchHistory = Array.isArray(profile.matchHistory) ? profile.matchHistory : [];
       if (input.result === 'win') {
@@ -454,7 +488,7 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log('');
-  console.log('Overlay de juegos de pelea v0.6.1 lista:');
+  console.log('Overlay de juegos de pelea v0.9.0 lista:');
   console.log('  Panel de control: http://127.0.0.1:' + PORT + '/dashboard');
   console.log('  Overlay para OBS: http://127.0.0.1:' + PORT + '/overlay');
   const interfaces = os.networkInterfaces();

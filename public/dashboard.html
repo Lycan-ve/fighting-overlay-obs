@@ -116,6 +116,22 @@
             <div class="toggle-copy"><strong>Registro automático de resultados</strong><small>Dos lecturas seguidas de la pantalla final (VICTORY / DEFEAT / WIN / LOSE según el juego) registran la partida. Incluye un enfriamiento de 10 segundos para evitar duplicados.</small></div>
             <label class="switch"><input type="checkbox" id="auto-record-toggle" checked><span class="track"></span><span class="thumb"></span></label>
           </div>
+          <div class="toggle-row">
+            <div class="toggle-copy"><strong>Detectar el juego automáticamente</strong><small>Con la detección activa, el lector reconoce si estás en 2XKO, Guilty Gear Strive o MK11 y cambia el juego activo y el tema de la overlay sin pulsar nada.</small></div>
+            <label class="switch"><input type="checkbox" id="auto-game-toggle"><span class="track"></span><span class="thumb"></span></label>
+          </div>
+          <div class="session-reset-row">
+            <label class="field-label" for="session-reset-mode">Reinicio del marcador de sesión</label>
+            <select id="session-reset-mode" class="text-input">
+              <option value="manual">Manual · nunca se reinicia solo</option>
+              <option value="daily">Cada día · vuelve a cero con la primera partida del día</option>
+              <option value="idle">Por inactividad · vuelve a cero tras un tiempo sin partidas</option>
+            </select>
+            <div id="session-idle-wrap" hidden>
+              <label class="field-label" for="session-idle-minutes">Minutos sin partidas para reiniciar</label>
+              <input id="session-idle-minutes" class="text-input" type="number" min="1" max="720" value="30">
+            </div>
+          </div>
           <div class="result-buttons">
             <button id="add-win" class="button button-win"><span class="result-symbol">+</span><span><strong>VICTORIA</strong><small>Sumar una victoria</small></span></button>
             <button id="add-loss" class="button button-loss"><span class="result-symbol">−</span><span><strong>DERROTA</strong><small>Sumar una derrota</small></span></button>
@@ -185,11 +201,11 @@
         </section>
         <section class="notice-panel">
           <div class="notice-icon">✧</div>
-          <div><strong>Tracking v0.6 · Un diseño por juego</strong><p>W/L, historial y detección automática para 2XKO, Guilty Gear Strive y Mortal Kombat 11. Los recortes del OCR se ajustan en las vistas de diagnóstico; si registra algo mal, usa Deshacer última partida.</p></div>
+          <div><strong>Tracking v0.9 · Automatización total</strong><p>W/L, historial, detección automática y cambio de juego solo para 2XKO, Guilty Gear Strive y Mortal Kombat 11. Los recortes del OCR se ajustan en las vistas de diagnóstico; si registra algo mal, usa Deshacer última partida.</p></div>
         </section>
       </aside>
     </main>
-    <footer class="dashboard-footer"><span>FIGHTING OVERLAY <b>v0.6</b></span><span>Datos guardados localmente en este equipo.</span></footer>
+    <footer class="dashboard-footer"><span>FIGHTING OVERLAY <b>v0.9</b></span><span>Datos guardados localmente en este equipo.</span></footer>
   </div>
   <video id="capture-video" muted playsinline></video>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>

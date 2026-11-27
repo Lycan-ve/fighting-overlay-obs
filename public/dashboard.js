@@ -22,6 +22,8 @@ let ownTag = '';
 let ownTagCount = 0;
 let oppTag = '';
 let oppTagCount = 0;
+let autoGameCandidate = '';
+let autoGameCandidateCount = 0;
 
 const SCAN_PHASES = ['team', 'result', 'opponents', 'result'];
 const RESULT_COOLDOWN_MS = 10000;
@@ -342,6 +344,10 @@ function render(state) {
   $('opacity-output').value = state.opacity + '%';
   $('auto-record-toggle').checked = state.autoRecord !== false;
   $('auto-apply-toggle').checked = state.autoApplyMains === true;
+  $('auto-game-toggle').checked = state.gameAutoDetect === true;
+  $('session-reset-mode').value = state.sessionResetMode || 'manual';
+  $('session-idle-minutes').value = state.sessionIdleMinutes || 30;
+  $('session-idle-wrap').hidden = (state.sessionResetMode || 'manual') !== 'idle';
   $('summary-wins').textContent = profile.wins;
   $('summary-losses').textContent = profile.losses;
   $('summary-rate').textContent = winRate(profile) + '%';
@@ -462,6 +468,9 @@ async function saveAutomation() {
   const next = structuredClone(currentState);
   next.autoRecord = $('auto-record-toggle').checked;
   next.autoApplyMains = $('auto-apply-toggle').checked;
+  next.gameAutoDetect = $('auto-game-toggle').checked;
+  next.sessionResetMode = $('session-reset-mode').value;
+  next.sessionIdleMinutes = Math.max(1, Math.min(720, Number($('session-idle-minutes').value) || 30));
   try {
     const saved = await api('/api/state', next);
     lastUpdatedAt = saved.updatedAt;
@@ -595,6 +604,65 @@ function findTagResult(text) {
   return '';
 }
 
+// Detección automática del juego activo: clasifica el texto leído del HUD
+// contra los rosters. En MK11 el HUD no muestra personajes (solo gamertags),
+// así que se exige una lectura más estable antes de cambiar.
+function classifyGameFromText(text) {
+  const twoXko = findRosterNames(text, '2xko');
+  const ggst = findRosterNames(text, 'ggst');
+  if (twoXko.length >= 2) return '2xko';
+  if (ggst.length >= 1 && !twoXko.length) return 'ggst';
+  if (twoXko.length === 1) return '2xko';
+  const candidate = String(text || '').trim().replace(/\s+/g, ' ');
+  return candidate.length >= 3 ? 'mk11' : '';
+}
+
+function resetAutoGameBuffers() {
+  autoGameCandidate = '';
+  autoGameCandidateCount = 0;
+}
+
+async function autoSwitchGameIfDetected(text) {
+  if (!currentState || currentState.gameAutoDetect !== true) return;
+  const game = classifyGameFromText(text);
+  if (!game) {
+    resetAutoGameBuffers();
+    return;
+  }
+  if (game === autoGameCandidate) autoGameCandidateCount += 1;
+  else {
+    autoGameCandidate = game;
+    autoGameCandidateCount = 1;
+  }
+  const needed = game === 'mk11' ? 3 : 2;
+  if (autoGameCandidateCount < needed) return;
+  if (currentState.selectedGame === game) return;
+  setDetectorStatus('Juego detectado: ' + GAME_NAMES[game] + '. Cambiando solo…', 'scanning');
+  const next = structuredClone(currentState);
+  next.selectedGame = game;
+  try {
+    const saved = await api('/api/state', next);
+    lastUpdatedAt = saved.updatedAt;
+    render(saved);
+    setDetectorStatus('Juego cambiado a ' + GAME_NAMES[game] + ' automáticamente.', 'active');
+  } catch (error) {
+    setDetectorStatus('No se pudo cambiar de juego: ' + error.message, 'error');
+  }
+  resetAutoGameBuffers();
+  stableCandidate = '';
+  stableCandidateCount = 0;
+  lastPostedCandidate = '';
+  stableOpponent = '';
+  stableOpponentCount = 0;
+  lastPostedOpponent = '';
+  ownTag = '';
+  ownTagCount = 0;
+  oppTag = '';
+  oppTagCount = 0;
+  resetAutoGameBuffers();
+  resetResultDebounce();
+}
+
 function drawCrop(video, crop, canvas) {
   if (!video.videoWidth || !video.videoHeight || !canvas) return null;
   const context = canvas.getContext('2d', { willReadFrequently: true });
@@ -651,6 +719,10 @@ async function scanTeamFrame() {
   const text = (result && result.data && result.data.text) || '';
   const confidence = result && result.data ? result.data.confidence : undefined;
   $('ocr-text').textContent = text.trim() || '(No se reconoció texto en este recorte)';
+
+  const gameBeforeAuto = activeGame();
+  await autoSwitchGameIfDetected(text);
+  if (!currentState || activeGame() !== gameBeforeAuto) return; // el juego cambió: la siguiente lectura usa los recortes nuevos
 
   if (config.mode === 'tags') {
     const candidate = text.trim().replace(/\s+/g, ' ');
@@ -817,6 +889,7 @@ async function stopDetector(message) {
   ownTagCount = 0;
   oppTag = '';
   oppTagCount = 0;
+  resetAutoGameBuffers();
   if (captureStream) {
     captureStream.getTracks().forEach(track => track.stop());
     captureStream = null;
@@ -920,6 +993,12 @@ $('mains-input').addEventListener('input', () => {
 $('save-appearance').addEventListener('click', saveAppearance);
 $('auto-record-toggle').addEventListener('change', saveAutomation);
 $('auto-apply-toggle').addEventListener('change', saveAutomation);
+$('auto-game-toggle').addEventListener('change', saveAutomation);
+$('session-reset-mode').addEventListener('change', () => {
+  $('session-idle-wrap').hidden = $('session-reset-mode').value !== 'idle';
+  saveAutomation();
+});
+$('session-idle-minutes').addEventListener('change', saveAutomation);
 $('add-win').addEventListener('click', () => addResult('win'));
 $('add-loss').addEventListener('click', () => addResult('loss'));
 $('undo-last').addEventListener('click', undoLast);
@@ -939,6 +1018,7 @@ $('hud-side').addEventListener('change', () => {
   ownTagCount = 0;
   oppTag = '';
   oppTagCount = 0;
+  resetAutoGameBuffers();
 });
 $('game-select').addEventListener('change', () => {
   const game = $('game-select').value;

@@ -1,4 +1,4 @@
-# Fighting Overlay OBS — v0.8
+# Fighting Overlay OBS — v0.9
 
 Overlay y tracking local para OBS: marcador W/L, win rate, racha, historial de partidas, estadísticas y **detección automática por OCR** en 2XKO, Guilty Gear Strive y Mortal Kombat 11. Cada juego tiene su propio tema visual, y los mains y personajes detectados muestran retratos: iconos locales incluidos en `public/Assest` para Guilty Gear Strive y retratos del repositorio Hot-Coffee-Frontend para 2XKO (en MK11 el HUD no muestra personajes, así que se usan gamertags; sus iconos usan IDs numéricos y se activan rellenando `public/Assest/MK 11/names.json`).
 
@@ -48,6 +48,7 @@ Para cada juego se guarda por separado:
 *   **Resumen de HOY**: partidas del día con win rate.
 *   **Historial**: últimas 60 partidas con tu personaje (o el rival en MK11), la hora y el origen (AUTO o MANUAL).
 *   **Rendimiento por personaje**: W/L y win rate por personaje detectado.
+*   **Sesión automática (v0.9)**: el marcador puede reiniciarse solo cada día o tras un tiempo sin partidas; se configura en el panel.
 
 El registro puede ser manual (botones del panel o del teléfono), automático por OCR, o mixto: la detección solo anota los personajes y tú registras el resultado.
 
@@ -61,6 +62,14 @@ Con la detección activa, el panel alterna la lectura entre tres zonas de la ven
 4.  En 2XKO y GGST, tu personaje o equipo aparece en la fila **EN PARTIDA**, el rival en **RIVALES**.
 5.  En la pantalla de resultado, dos lecturas seguidas registran la partida automáticamente (con enfriamiento de 10 segundos).
 6.  Si registró algo mal, pulsa **Deshacer última partida**.
+
+### Modo automático total (v0.9)
+
+En la sección de tracking del panel puedes activar **Detectar el juego automáticamente**: con la detección activa, el lector reconoce si estás jugando a 2XKO, Guilty Gear Strive o Mortal Kombat 11 por el texto del HUD y cambia el juego activo (y el tema de la overlay) sin pulsar nada. El registro de resultados, los personajes y los rivales siguen leyéndose solos, y los mains pueden guardarse solos con **Aplicar mains automáticamente**.
+
+Junto al registro automático se elige el **reinicio del marcador de sesión**: manual (nunca se reinicia solo), cada día (vuelve a cero con la primera partida del día) o por inactividad (vuelve a cero tras X minutos sin partidas, configurable de 1 a 720 minutos).
+
+Los navegadores solo permiten compartir la pantalla con una confirmación por sesión del panel: abre el panel, pulsa **Iniciar detección** una vez y comparte la ventana del juego; a partir de ahí, todo el tracking funciona solo.
 
 ### Cómo detecta cada juego
 
