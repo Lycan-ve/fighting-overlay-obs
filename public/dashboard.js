@@ -29,6 +29,11 @@ const GAME_NAMES = { '2xko': '2XKO', ggst: 'GUILTY GEAR STRIVE', mk11: 'MORTAL K
 const THEME_CLASSES = ['theme-2xko', 'theme-mk11', 'theme-ggst'];
 const FIGHTER_ASSET_BASE = 'https://raw.githubusercontent.com/Lycan-ve/Hot-Coffee-Frontend/master/public/fighters/';
 
+// Iconos locales de Guilty Gear Strive dentro del propio repo (public/Assest).
+const GGST_ASSET_PATH = '/Assest/' + encodeURIComponent('Guilty Gear Strive') + '/';
+// Nombres del roster cuyo archivo de icono usa una clave distinta.
+const GGST_ICON_KEYS = { 'A.B.A': 'ABA', 'Bedman?': 'Bed', 'Happy Chaos': 'HappyChaos' };
+
 // Rosters por juego para el OCR (nombres tal como aparecen en el HUD).
 const CHAMPIONS_2XKO = [
   'Ahri', 'Akali', 'Blitzcrank', 'Braum', 'Caitlyn', 'Darius', 'Ekko', 'Illaoi',
@@ -102,16 +107,21 @@ function setValueUnlessFocused(id, value) {
   if (document.activeElement !== $(id)) $(id).value = value;
 }
 
-function fighterAssetUrl(name) {
-  // Los retratos PNG solo existen para el roster de 2XKO.
+function fighterAssetUrl(name, game) {
+  // 2XKO: retratos del repo Hot-Coffee-Frontend. GGST: iconos locales de
+  // public/Assest. En MK11 el HUD no muestra personajes, solo nombres.
+  if (game === 'ggst') {
+    if (!CHAMPIONS_GGST.includes(name)) return '';
+    return GGST_ASSET_PATH + 'icon_' + encodeURIComponent(GGST_ICON_KEYS[name] || name) + '_0.png';
+  }
   if (!CHAMPIONS_2XKO.includes(name)) return '';
   return FIGHTER_ASSET_BASE + encodeURIComponent(name) + '.png';
 }
 
-function createFighterChip(name, className) {
+function createFighterChip(name, className, game) {
   const chip = document.createElement('span');
   chip.className = className;
-  const url = fighterAssetUrl(name);
+  const url = fighterAssetUrl(name, game);
   if (url) {
     const image = document.createElement('img');
     image.className = 'fighter-chip-image';
@@ -128,7 +138,7 @@ function createFighterChip(name, className) {
   return chip;
 }
 
-function makeChips(container, names, className, emptyLabel) {
+function makeChips(container, names, className, emptyLabel, game) {
   container.replaceChildren();
   const values = names && names.length ? names : [];
   if (!values.length) {
@@ -138,7 +148,7 @@ function makeChips(container, names, className, emptyLabel) {
     container.append(empty);
     return;
   }
-  for (const name of values) container.append(createFighterChip(name, className));
+  for (const name of values) container.append(createFighterChip(name, className, game));
 }
 
 function currentMainsFromInput() {
@@ -160,7 +170,7 @@ function renderMainPicker(selectedNames) {
     button.dataset.name = name;
     button.setAttribute('aria-pressed', String(selected.includes(name)));
     button.title = name;
-    const url = fighterAssetUrl(name);
+    const url = fighterAssetUrl(name, game);
     if (url) {
       const image = document.createElement('img');
       image.src = url;
@@ -328,21 +338,21 @@ function render(state) {
   $('preview-wins').textContent = profile.wins;
   $('preview-losses').textContent = profile.losses;
   $('preview-rate').innerHTML = winRate(profile) + '<span class="percent">%</span>';
-  makeChips($('preview-mains'), profile.mains, 'main-chip', 'Sin configurar');
+  makeChips($('preview-mains'), profile.mains, 'main-chip', 'Sin configurar', state.selectedGame);
 
   const detectedFresh = Array.isArray(profile.detectedCharacters)
     && profile.detectedCharacters.length > 0
     && profile.detectedAt
     && Date.now() - profile.detectedAt < 45000;
   $('preview-team-row').hidden = !detectedFresh;
-  if (!$('preview-team-row').hidden) makeChips($('preview-team-chips'), profile.detectedCharacters, 'detected-chip', '');
+  if (!$('preview-team-row').hidden) makeChips($('preview-team-chips'), profile.detectedCharacters, 'detected-chip', '', state.selectedGame);
 
   const opponentsFresh = Array.isArray(profile.detectedOpponents)
     && profile.detectedOpponents.length > 0
     && profile.detectedOpponentsAt
     && Date.now() - profile.detectedOpponentsAt < 45000;
   $('preview-opponents-row').hidden = !opponentsFresh;
-  if (!$('preview-opponents-row').hidden) makeChips($('preview-opponents-chips'), profile.detectedOpponents, 'detected-chip', '');
+  if (!$('preview-opponents-row').hidden) makeChips($('preview-opponents-chips'), profile.detectedOpponents, 'detected-chip', '', state.selectedGame);
 
   const streak = $('preview-streak');
   if (profile.streak) {
@@ -493,7 +503,7 @@ function setDetectorStatus(message, stateName) {
 
 function showDetected(names, confidence) {
   latestDetected = names || [];
-  makeChips($('detected-list'), latestDetected, 'detected-chip', 'No se reconocen personajes todavía');
+  makeChips($('detected-list'), latestDetected, 'detected-chip', 'No se reconocen personajes todavía', activeGame());
   $('detected-confidence').textContent = confidence == null ? 'LECTURA GUARDADA' : 'OCR ' + Math.round(confidence) + '%';
   $('apply-detected').disabled = latestDetected.length === 0 || !currentState;
 }
