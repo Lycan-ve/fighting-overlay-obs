@@ -1,6 +1,16 @@
-# Fighting Overlay OBS — v0.4
+# Fighting Overlay OBS — v0.5
 
-Overlay local para OBS con marcador W/L, win rate, racha, mains por juego, detección automática de personajes de 2XKO y, desde la v0.4, **registro automático de victorias y derrotas**, detección del **equipo rival**, **historial de partidas** y **estadísticas por personaje**.
+Overlay local para OBS con marcador W/L, win rate, racha, detección automática de personajes de 2XKO, registro automático de victorias y derrotas, detección del equipo rival, historial de partidas, estadísticas por personaje y **un tema visual distinto para cada juego**.
+
+## Temas por juego (v0.5)
+
+La overlay cambia sola de diseño según el juego activo, también en la vista previa del panel:
+
+*   **2XKO** — tema ámbar de la escena del canal: bordes dorados redondeados, acento verde azulado a oro, tipografía Barlow Condensed.
+*   **Mortal Kombat 1** — sangre y oro: fondo granate oscuro, ángulos rectos, acento rojo a oro y tipografía épica Cinzel.
+*   **Guilty Gear Strive** — neón: púrpura profundo, magenta y cian brillantes, barra lateral magenta, tipografía techno Chakra Petch con inclinaciones rápidas.
+
+Los temas viven en `public/themes.css`; solo cambian colores, formas y tipografías, la información mostrada es la misma.
 
 ## Requisitos
 
@@ -13,7 +23,7 @@ Overlay local para OBS con marcador W/L, win rate, racha, mains por juego, detec
 ## Iniciar el proyecto
 
 1.  Descarga o clona este repositorio en una carpeta.
-2.  Si ya usabas v0.3, tu archivo `data.json` se conserva y se migra automáticamente: la v0.4 añade los campos nuevos sin tocar tus estadísticas.
+2.  Si ya usabas v0.3 o v0.4, tu archivo `data.json` se conserva y se migra automáticamente.
 3.  Abre la carpeta del proyecto.
 4.  Haz doble clic en `start.bat` o ejecuta `npm start` desde esa carpeta.
 5.  Mantén abierta la ventana de terminal.
@@ -27,7 +37,7 @@ No necesita `npm install`: el servidor usa módulos nativos de Node.js. La libre
 2.  Nombre sugerido: `Fighting Overlay`.
 3.  URL: `http://127.0.0.1:3000/overlay`.
 4.  Ancho: `1920`; alto: `1080`.
-5.  Activa el fondo transparente si OBS muestra esa opción. La página fuerza transparencia también en el elemento raíz HTML y en el body; el fondo oscuro se reserva exclusivamente para el panel de control. Si OBS conserva una vista anterior, pulsa **Actualizar caché de la página actual** en las propiedades de la fuente de navegador o elimina y vuelve a crear la fuente.
+5.  Activa el fondo transparente si OBS muestra esa opción. Si OBS conserva una vista anterior, pulsa **Actualizar caché de la página actual** en las propiedades de la fuente de navegador o elimina y vuelve a crear la fuente.
 6.  Mueve la fuente por encima del juego y ajusta posición/tamaño desde el panel web.
 
 ## Automatización (v0.4)
@@ -79,9 +89,10 @@ La captura se procesa en el navegador del propio equipo mediante Tesseract.js. N
 *   La selección admite hasta tres mains y sincroniza el campo de texto, para que también puedas escribir los nombres manualmente.
 *   Los PNG se cargan desde `raw.githubusercontent.com` usando las imágenes públicas de tu repositorio. Se necesita conexión a internet para que aparezcan; si alguna imagen no carga, el nombre sigue visible.
 
-## Qué incluye v0.4
+## Qué incluye v0.5
 
 *   Perfiles independientes para 2XKO, Mortal Kombat 1 y Guilty Gear Strive.
+*   Un tema visual distinto por juego, con cambio automático.
 *   Marcador W/L, win rate y racha por juego.
 *   Hasta tres mains editables por perfil, con aplicación automática opcional.
 *   Botones manuales para victoria y derrota, más control desde el teléfono.
