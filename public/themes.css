@@ -1,0 +1,51 @@
+/* v0.5 · Temas visuales por juego. 2XKO conserva el tema base de styles.css. */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Chakra+Petch:wght@600;700&display=swap');
+
+/* ============ MORTAL KOMBAT 1 · sangre y oro, ángulos rectos ============ */
+.overlay-card.theme-mk1{
+  background:linear-gradient(120deg,rgba(24,7,9,.97),rgba(48,12,16,.94) 55%,rgba(30,8,10,.96));
+  border:1px solid rgba(224,82,82,.68);
+  border-radius:0;
+  box-shadow:0 8px 30px rgba(0,0,0,.5),inset 0 0 22px rgba(120,16,20,.25);
+}
+.overlay-card.theme-mk1 .overlay-accent{height:4px;background:linear-gradient(90deg,#7a1418 0%,#d2372f 45%,#f0b429 100%)}
+.overlay-card.theme-mk1 .player-emblem{border-radius:0;transform:skew(-8deg);border:1px solid rgba(240,180,41,.7);background:linear-gradient(145deg,#8c1d1d,#2a0b0d);color:#f5c95a;font-family:'Cinzel',serif}
+.overlay-card.theme-mk1 .player-name{font-family:'Cinzel',serif;font-weight:900;letter-spacing:2px;color:#f3d9a4;text-shadow:0 1px 10px rgba(210,55,47,.35)}
+.overlay-card.theme-mk1 .eyebrow{color:#e8a0a0;letter-spacing:1.8px}
+.overlay-card.theme-mk1 .streak-pill{border-radius:0;font-family:'Cinzel',serif}
+.overlay-card.theme-mk1 .stats-row{border-top:1px solid rgba(224,82,82,.35);border-bottom:1px solid rgba(224,82,82,.35)}
+.overlay-card.theme-mk1 .stat-number{font-family:'Cinzel',serif;font-weight:900}
+.overlay-card.theme-mk1 .stat-win .stat-number{color:#f0b429}
+.overlay-card.theme-mk1 .stat-loss .stat-number{color:#ff6b5e}
+.overlay-card.theme-mk1 .stat-rate .stat-number{color:#ff9c5f}
+.overlay-card.theme-mk1 .stat-label,.overlay-card.theme-mk1 .mains-label{color:#d9a9a0;letter-spacing:1.5px}
+.overlay-card.theme-mk1 .main-chip{font-family:'Cinzel',serif;color:#f5d9a4;background:rgba(140,29,29,.3);border:1px solid rgba(224,130,60,.45);border-radius:0}
+.overlay-card.theme-mk1 .detected-chip{font-family:'Cinzel',serif;color:#ffd98c;background:rgba(140,29,29,.32);border:1px solid rgba(240,180,41,.5);border-radius:0}
+.overlay-card.theme-mk1 .team-detected-row{border-bottom:1px solid rgba(224,82,82,.35)}
+.overlay-card.theme-mk1 .detector-live-dot{background:#ff6b5e;box-shadow:0 0 9px rgba(255,107,94,.95)}
+.overlay-card.theme-mk1 .result-toast{font-family:'Cinzel',serif;border-radius:0;background:rgba(22,6,8,.94)}
+
+/* ============ GUILTY GEAR STRIVE · neón magenta y cian, velocidad ============ */
+.overlay-card.theme-ggst{
+  background:linear-gradient(115deg,rgba(24,8,38,.97),rgba(46,12,58,.93));
+  border:1px solid rgba(255,79,163,.6);
+  border-radius:0;
+  box-shadow:0 8px 30px rgba(0,0,0,.5),-3px 0 0 0 #ff2e88,0 0 24px rgba(255,46,136,.18);
+}
+.overlay-card.theme-ggst .overlay-accent{height:5px;background:linear-gradient(90deg,#ff2e88 0%,#ff7ac8 40%,#35e0e0 100%)}
+.overlay-card.theme-ggst .player-emblem{border-radius:0;transform:skew(9deg);border:1px solid rgba(53,224,224,.75);background:linear-gradient(145deg,#ff2e88,#5c1460);color:#c8fff4;font-family:'Chakra Petch',sans-serif}
+.overlay-card.theme-ggst .player-name{font-family:'Chakra Petch',sans-serif;font-weight:700;letter-spacing:1.4px;color:#ffe9fb;text-shadow:0 0 12px rgba(255,46,136,.5);transform:skewX(-6deg)}
+.overlay-card.theme-ggst .eyebrow{color:#7deee6;letter-spacing:2px}
+.overlay-card.theme-ggst .streak-pill{border-radius:0;transform:skewX(-8deg);font-family:'Chakra Petch',sans-serif}
+.overlay-card.theme-ggst .stats-row{border-top:1px solid rgba(255,79,163,.4);border-bottom:1px solid rgba(53,224,224,.4)}
+.overlay-card.theme-ggst .stat-number{font-family:'Chakra Petch',sans-serif;font-weight:700;transform:skewX(-8deg)}
+.overlay-card.theme-ggst .stat-win .stat-number{color:#35e0e0}
+.overlay-card.theme-ggst .stat-loss .stat-number{color:#ff5da2}
+.overlay-card.theme-ggst .stat-rate .stat-number{color:#ffd84d}
+.overlay-card.theme-ggst .stat-label,.overlay-card.theme-ggst .mains-label{color:#c39fd6;letter-spacing:1.6px}
+.overlay-card.theme-ggst .main-chip{font-family:'Chakra Petch',sans-serif;color:#ffd6ec;background:rgba(255,46,136,.16);border:1px solid rgba(255,79,163,.5);border-radius:0;transform:skewX(-8deg)}
+.overlay-card.theme-ggst .detected-chip{font-family:'Chakra Petch',sans-serif;color:#a8fff6;background:rgba(53,224,224,.14);border:1px solid rgba(53,224,224,.55);border-radius:0;transform:skewX(-8deg)}
+.overlay-card.theme-ggst .team-detected-row{border-bottom:1px solid rgba(255,79,163,.4)}
+.overlay-card.theme-ggst .detector-live-dot{background:#35e0e0;box-shadow:0 0 9px rgba(53,224,224,.95)}
+.overlay-card.theme-ggst .result-toast{font-family:'Chakra Petch',sans-serif;border-radius:0;background:rgba(20,6,30,.94)}
