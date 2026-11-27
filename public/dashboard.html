@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panel · Fighting Overlay</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="dashboard-page">
+  <div class="dashboard-shell">
+    <header class="dashboard-header">
+      <div class="brand-lockup">
+        <div class="brand-icon">✦</div>
+        <div>
+          <div class="eyebrow">OBS STREAM TOOLS</div>
+          <h1>Fighting <span>Overlay</span></h1>
+        </div>
+      </div>
+      <div class="connection-status"><span class="status-dot"></span> LOCAL · CONECTADO</div>
+    </header>
+
+    <section class="panel-section" style="margin:0 0 22px;padding:18px;border:1px solid #536052;border-radius:14px;background:#1a241e;color:#f5f3ec">
+      <div class="eyebrow">CONTROL REMOTO</div><h2 style="margin:5px 0 8px">Conecta tu teléfono</h2>
+      <p style="margin:0 0 12px;color:#bdc8bd">Conecta el móvil a la misma Wi‑Fi y abre esta dirección:</p>
+      <strong id="remote-url" style="overflow-wrap:anywhere">Buscando dirección local…</strong>
+      <p style="margin:12px 0 4px;color:#bdc8bd">Código de conexión:</p><strong id="remote-pin" style="font-size:25px;letter-spacing:.18em">------</strong>
+      <p style="margin:8px 0 0;color:#9eac9f;font-size:12px">Introduce este código en el teléfono. Si reinicias el servidor, se generará uno nuevo.</p>
+    </section>
+    <main class="dashboard-grid">
+      <section class="control-column">
+        <section class="panel-section">
+          <div class="section-heading">
+            <div><div class="eyebrow">CONFIGURACIÓN</div><h2>Tu perfil</h2></div>
+            <span class="section-mark">01</span>
+          </div>
+          <label class="field-label" for="player-name-input">Nombre del jugador</label>
+          <input id="player-name-input" class="text-input" maxlength="24" value="LYCAN" autocomplete="off">
+          <label class="field-label" for="game-select">Juego activo</label>
+          <select id="game-select" class="text-input">
+            <option value="2xko">2XKO</option>
+            <option value="mk1">Mortal Kombat 1</option>
+            <option value="ggst">Guilty Gear Strive</option>
+          </select>
+          <label class="field-label" for="mains-input">Mis mains <span>máximo 3, separados por coma</span></label>
+          <input id="mains-input" class="text-input" maxlength="75" placeholder="Ej. Ekko, Warwick">
+          <div id="main-picker-wrap">
+            <div class="fighter-picker-heading"><span>ELIGE TUS MAINS · 2XKO</span><small>Hasta 3 · pulsa los retratos</small></div>
+            <div id="main-picker" class="fighter-picker" aria-label="Seleccionar personajes principales"></div>
+            <p class="picker-hint" id="picker-hint">Selecciona hasta tres personajes. También puedes escribir sus nombres arriba.</p>
+          </div>
+          <button id="save-profile" class="button button-primary">Guardar perfil <span>↗</span></button>
+          <div id="save-message" class="inline-message" role="status"></div>
+        </section>
+
+        <section class="panel-section detection-section">
+          <div class="section-heading">
+            <div><div class="eyebrow">LECTURA DEL HUD</div><h2>Detectar personajes</h2></div>
+            <span class="section-mark">02</span>
+          </div>
+          <p class="section-description">Comparte la ventana de 2XKO. El lector examina las etiquetas de tu equipo en la parte superior de la pantalla.</p>
+          <label class="field-label" for="hud-side">¿En qué lado aparece tu jugador?</label>
+          <select id="hud-side" class="text-input">
+            <option value="left">Izquierda · como en tu escena</option>
+            <option value="right">Derecha</option>
+          </select>
+          <div class="detector-actions">
+            <button id="start-detection" class="button button-detect"><span class="button-play">▶</span> Iniciar detección</button>
+            <button id="stop-detection" class="button button-stop" hidden>Detener</button>
+          </div>
+          <div class="detector-status" id="detector-status" role="status"><span class="status-dot status-idle"></span> Detector apagado</div>
+          <div class="detected-result" id="detected-result">
+            <div class="detected-heading"><span>PERSONAJES LEÍDOS</span><span id="detected-confidence">—</span></div>
+            <div class="detected-list" id="detected-list"><span class="detected-empty">Aún no hay personajes detectados</span></div>
+          </div>
+          <div class="ocr-preview-wrap">
+            <div class="ocr-preview-label">RECORTE DEL HUD · VISTA DE DIAGNÓSTICO</div>
+            <canvas id="ocr-crop-preview" width="960" height="135"></canvas>
+          </div>
+          <button id="apply-detected" class="button button-secondary" disabled>Usar personajes detectados como mis mains</button>
+          <details class="ocr-details">
+            <summary>Ver texto reconocido</summary>
+            <pre id="ocr-text">Esperando captura…</pre>
+          </details>
+          <p class="privacy-note">El vídeo se procesa en este navegador. No se graba ni se envía al servidor del overlay. La primera carga descarga el motor OCR desde una CDN y requiere internet.</p>
+        </section>
+
+        <section class="panel-section">
+          <div class="section-heading">
+            <div><div class="eyebrow">REGISTRO DE PARTIDAS</div><h2>Actualizar marcador</h2></div>
+            <span class="section-mark">03</span>
+          </div>
+          <p class="section-description">Registra el resultado de cada combate. El marcador de OBS se actualizará automáticamente.</p>
+          <div class="result-buttons">
+            <button id="add-win" class="button button-win"><span class="result-symbol">+</span><span><strong>VICTORIA</strong><small>Sumar una victoria</small></span></button>
+            <button id="add-loss" class="button button-loss"><span class="result-symbol">−</span><span><strong>DERROTA</strong><small>Sumar una derrota</small></span></button>
+          </div>
+          <div class="score-summary">
+            <div><span>VICTORIAS</span><strong id="summary-wins">0</strong></div>
+            <div><span>DERROTAS</span><strong id="summary-losses">0</strong></div>
+            <div><span>WIN RATE</span><strong id="summary-rate">0%</strong></div>
+            <div><span>RACHA</span><strong id="summary-streak">—</strong></div>
+          </div>
+          <button id="reset-stats" class="text-button">Reiniciar estadísticas de este juego</button>
+        </section>
+
+        <section class="panel-section appearance-section">
+          <div class="section-heading">
+            <div><div class="eyebrow">INTEGRACIÓN CON TU ESCENA</div><h2>Posición y tamaño</h2></div>
+            <span class="section-mark">04</span>
+          </div>
+          <label class="field-label" for="position-select">Posición en pantalla</label>
+          <select id="position-select" class="text-input">
+            <option value="bottom-center">Abajo centro · horizontal (recomendado)</option>
+            <option value="top-right">Arriba derecha · debajo del marcador</option>
+            <option value="top-left">Arriba izquierda</option>
+            <option value="bottom-left">Abajo izquierda</option>
+            <option value="bottom-right">Abajo derecha</option>
+          </select>
+          <div class="range-row"><label class="field-label" for="scale-range">Tamaño</label><output id="scale-output">90%</output></div>
+          <input id="scale-range" class="range-input" type="range" min="70" max="135" value="90">
+          <div class="range-row"><label class="field-label" for="opacity-range">Opacidad</label><output id="opacity-output">94%</output></div>
+          <input id="opacity-range" class="range-input" type="range" min="35" max="100" value="94">
+          <button id="save-appearance" class="button button-secondary">Aplicar apariencia</button>
+        </section>
+      </section>
+
+      <aside class="preview-column">
+        <section class="preview-panel">
+          <div class="section-heading">
+            <div><div class="eyebrow">TU ESCENA DE OBS</div><h2>Vista previa integrada</h2></div>
+            <span class="live-tag"><span></span> REFERENCIA</span>
+          </div>
+          <div class="preview-stage">
+            <div class="preview-overlay-mount" id="preview-mount">
+              <div class="overlay-card preview-card">
+                <div class="overlay-accent"></div>
+                <div class="overlay-topline">
+                  <div class="player-block"><div class="player-emblem"><span>L</span></div><div class="player-copy"><div class="eyebrow" id="preview-game">2XKO · RÉCORD DE SESIÓN</div><div class="player-name" id="preview-player">LYCAN</div></div></div>
+                  <div class="streak-pill" id="preview-streak" hidden>—</div>
+                </div>
+                <div class="stats-row"><div class="stat stat-win"><span class="stat-number" id="preview-wins">0</span><span class="stat-label">VICTORIAS</span></div><div class="stat stat-loss"><span class="stat-number" id="preview-losses">0</span><span class="stat-label">DERROTAS</span></div><div class="stat stat-rate"><span class="stat-number" id="preview-rate">0<span class="percent">%</span></span><span class="stat-label">WIN RATE</span></div></div>
+                <div class="team-detected-row" id="preview-team-row" hidden><span class="mains-label">EN PARTIDA</span><div class="detected-chips" id="preview-team-chips"></div><span class="detector-live-dot"></span></div>
+                <div class="overlay-bottomline"><div class="mains-label">MIS MAINS</div><div class="mains-list" id="preview-mains"><span class="main-chip">Ekko · Warwick</span></div></div>
+              </div>
+            </div>
+            <div class="preview-caption">Captura de referencia que compartiste · el overlay real conserva el fondo transparente</div>
+          </div>
+          <div class="obs-instructions">
+            <div class="obs-icon">OBS</div>
+            <div><strong>Fuente de navegador</strong><p>URL: <code>http://127.0.0.1:3000/overlay</code><br>Resolución recomendada: 1920 × 1080</p></div>
+          </div>
+        </section>
+        <section class="notice-panel">
+          <div class="notice-icon">✧</div>
+          <div><strong>Detección experimental de 2XKO</strong><p>El lector busca los nombres de campeón en el HUD superior. Si el juego cambia de interfaz, resolución o lado, podremos ajustar el recorte con la vista de diagnóstico. La detección de resultados W/L sigue siendo manual en esta versión.</p></div>
+        </section>
+      </aside>
+    </main>
+    <footer class="dashboard-footer"><span>FIGHTING OVERLAY <b>v0.3</b></span><span>Datos guardados localmente en este equipo.</span></footer>
+  </div>
+  <video id="capture-video" muted playsinline></video>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script>
+    fetch('/api/network-info').then(r=>r.json()).then(info=>{
+      const url=document.getElementById('remote-url');
+      url.textContent=info.addresses.length ? `http://${info.addresses[0]}:${info.port}/remote` : 'No se detectó una dirección Wi‑Fi local';
+      document.getElementById('remote-pin').textContent=info.pin;
+    }).catch(()=>{document.getElementById('remote-url').textContent='No se pudo obtener la dirección local';});
+  </script>
+  <script src="/dashboard.js"></script>
+</body>
+</html>

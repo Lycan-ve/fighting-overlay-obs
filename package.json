@@ -1,0 +1,12 @@
+{
+  "name": "fighting-games-obs-overlay",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Overlay de estadisticas para juegos de pelea y panel de control local para OBS",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

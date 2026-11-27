@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es" class="overlay-root">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fighting Overlay</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="overlay-page">
+  <main id="overlay" class="overlay-card position-bottom-center" aria-live="polite">
+    <div class="overlay-accent"></div>
+    <div class="overlay-topline">
+      <div class="player-block">
+        <div class="player-emblem" aria-hidden="true"><span>L</span></div>
+        <div class="player-copy">
+          <div class="eyebrow" id="game-label">2XKO · RÉCORD DE SESIÓN</div>
+          <div class="player-name" id="player-name">LYCAN</div>
+        </div>
+      </div>
+      <div class="streak-pill" id="streak-pill" hidden>—</div>
+    </div>
+    <div class="stats-row">
+      <div class="stat stat-win">
+        <span class="stat-number" id="wins">0</span>
+        <span class="stat-label">VICTORIAS</span>
+      </div>
+      <div class="stat stat-loss">
+        <span class="stat-number" id="losses">0</span>
+        <span class="stat-label">DERROTAS</span>
+      </div>
+      <div class="stat stat-rate">
+        <span class="stat-number" id="win-rate">0<span class="percent">%</span></span>
+        <span class="stat-label">WIN RATE</span>
+      </div>
+    </div>
+    <div class="team-detected-row" id="team-detected-row" hidden>
+      <span class="mains-label">EN PARTIDA</span>
+      <div class="detected-chips" id="detected-chips"></div>
+      <span class="detector-live-dot" title="Detección activa"></span>
+    </div>
+    <div class="overlay-bottomline">
+      <div class="mains-label">MIS MAINS</div>
+      <div class="mains-list" id="mains-list"><span class="main-chip">Sin configurar</span></div>
+    </div>
+    <div class="result-toast" id="result-toast" hidden></div>
+  </main>
+  <script src="/overlay.js"></script>
+</body>
+</html>
