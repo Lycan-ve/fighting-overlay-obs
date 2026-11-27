@@ -1,14 +1,14 @@
-# Fighting Overlay OBS — v0.6
+# Fighting Overlay OBS — v0.6.1
 
-Overlay y tracking local para OBS: marcador W/L, win rate, racha, historial de partidas, estadísticas por personaje y **detección automática por OCR** en 2XKO, Guilty Gear Strive y Mortal Kombat 11. Cada juego tiene su propio tema visual.
+Overlay y tracking local para OBS: marcador W/L, win rate, racha, historial de partidas, estadísticas y **detección automática por OCR** en 2XKO, Guilty Gear Strive y Mortal Kombat 11. Cada juego tiene su propio tema visual.
 
 ## Temas por juego
 
-La overlay cambia sola de diseño según el juego activo, también en la vista previa del panel:
+La overlay cambia sola de diseño según el juego activo, también en la vista previa del panel. Los temas están afinados con los HUD reales de cada juego:
 
 *   **2XKO** — tema ámbar de la escena del canal: bordes dorados redondeados, acento verde azulado a oro, tipografía Barlow Condensed.
-*   **Mortal Kombat 11** — sangre y oro: fondo granate oscuro, ángulos rectos, acento rojo a oro y tipografía épica Cinzel.
-*   **Guilty Gear Strive** — neón: púrpura profundo, magenta y cian brillantes, barra lateral magenta, tipografía techno Chakra Petch con inclinaciones rápidas.
+*   **Mortal Kombat 11** — oro y sangre: fondo bronce oscuro, borde dorado, acento oro a rojo y tipografía épica Cinzel, como el marco dorado de su HUD.
+*   **Guilty Gear Strive** — negro, blanco y rosa: fondo negro, borde blanco, barra lateral magenta y tipografía Chakra Petch inclinada, como el HUD de GGST.
 
 Los temas viven en `public/themes.css`.
 
@@ -38,7 +38,7 @@ No necesita `npm install`: el servidor usa módulos nativos de Node.js. La libre
 3.  URL: `http://127.0.0.1:3000/overlay`.
 4.  Ancho: `1920`; alto: `1080`.
 5.  Activa el fondo transparente si OBS muestra esa opción. Si OBS conserva una vista anterior, pulsa **Actualizar caché de la página actual** en las propiedades de la fuente de navegador.
-6.  Mueve la fuente por encima del juego y ajusta posición/tamaño desde el panel web.
+6.  Mueve la fuente por encima del juego y ajusta posición/tamaño desde el panel web. La posición "abajo centro" queda libre en los tres juegos: en GGST los medidores de tensión ocupan las esquinas inferiores y en MK11 los marcos decorativos quedan a los costados.
 
 ## Tracking (v0.6)
 
@@ -46,7 +46,7 @@ Para cada juego se guarda por separado:
 
 *   **Victorias, derrotas, win rate y racha** de la sesión.
 *   **Resumen de HOY**: partidas del día con win rate.
-*   **Historial**: últimas 60 partidas con tu personaje, el rival, la hora y el origen (AUTO o MANUAL).
+*   **Historial**: últimas 60 partidas con tu personaje (o el rival en MK11), la hora y el origen (AUTO o MANUAL).
 *   **Rendimiento por personaje**: W/L y win rate por personaje detectado.
 
 El registro puede ser manual (botones del panel o del teléfono), automático por OCR, o mixto: la detección solo anota los personajes y tú registras el resultado.
@@ -58,21 +58,23 @@ Con la detección activa, el panel alterna la lectura entre tres zonas de la ven
 1.  Guarda el juego activo en el panel.
 2.  Pulsa **Iniciar detección** y comparte la ventana del juego en el selector de Chrome/Edge.
 3.  Usa las vistas de diagnóstico para comprobar que los recortes toman las zonas correctas.
-4.  Tu personaje o equipo aparece en la fila **EN PARTIDA**, el rival en **RIVALES**.
-5.  En la pantalla de resultado, dos lecturas seguidas de VICTORY / DEFEAT / WIN / LOSE registran la partida automáticamente (con enfriamiento de 10 segundos).
+4.  En 2XKO y GGST, tu personaje o equipo aparece en la fila **EN PARTIDA**, el rival en **RIVALES**.
+5.  En la pantalla de resultado, dos lecturas seguidas registran la partida automáticamente (con enfriamiento de 10 segundos).
 6.  Si registró algo mal, pulsa **Deshacer última partida**.
 
-### Zonas de lectura por juego
+### Cómo detecta cada juego
 
-Cada juego tiene su configuración en `GAME_DETECT`, al inicio de `public/dashboard.js`: roster, tamaño de equipo, recortes del HUD y de la zona de resultado, y palabras clave de victoria/derrota. Son proporciones del ancho y alto de la ventana compartida; ajústalas si la vista de diagnóstico muestra un recorte desplazado.
+La configuración está en `GAME_DETECT`, al inicio de `public/dashboard.js`: modo, roster, tamaño de equipo, recortes del HUD y de la zona de resultado, y palabras clave. Son proporciones del ancho y alto de la ventana compartida.
 
-*   **2XKO**: equipos de 2 (Point + Assist). Palabras: VICTORY / DEFEAT / WINS.
-*   **Guilty Gear Strive**: 1 personaje. Palabras: WIN / LOSE.
-*   **Mortal Kombat 11**: 1 personaje. Palabras: VICTORY / DEFEAT / WINS.
+*   **2XKO** (modo roster): equipos de 2 (Point + Assist) leyendo las etiquetas superiores. Resultado por VICTORY / DEFEAT / WINS.
+*   **Guilty Gear Strive** (modo roster): 1 personaje, leyendo el nombre junto al retrato en la esquina superior (GIOVANNA, NAGORIYUKI, ...). Resultado por WIN / LOSE.
+*   **Mortal Kombat 11** (modo etiquetas): el HUD de MK11 no muestra personajes, solo gamertags. El lector lee tu etiqueta (por ejemplo "MarineMorBius") y la del rival ("Fuzzboy73") en las esquinas superiores, y cuando aparece el banner "ETIQUETA WINS" atribuye la victoria o derrota comparando con las etiquetas. El rival queda registrado en el historial y en la fila RIVALES por su gamertag.
+
+Si el banner aparece antes de leer las dos etiquetas, la partida no se registra sola (evita atribuir mal); registra a mano en ese caso.
 
 ### Rosters
 
-El detector busca los nombres del roster de cada juego (2XKO hasta Sett y Samira del parche 1.3.3; GGST hasta Unika y Lucy; MK11 completo con DLC). Los nombres no reconocidos se descartan, así el OCR "ruidoso" no contamina el tracking.
+El detector busca los nombres del roster de cada juego (2XKO hasta Sett y Samira del parche 1.3.3; GGST hasta Unika y Lucy; MK11 completo con DLC). Los nombres no reconocidos se descartan, así el OCR "ruidoso" no contamina el tracking. En MK11 el roster sirve para elegir mains a mano.
 
 ### Privacidad de la captura
 
@@ -86,7 +88,7 @@ La captura se procesa en el navegador del propio equipo mediante Tesseract.js. N
 
 ## Limitaciones conocidas
 
-La detección automática depende del texto y la geometría del HUD de cada juego: resolución, escalado, idioma o interfaces distintas pueden hacerla fallar. Por eso existe el enfriamiento, el aviso de "posible resultado", el botón de deshacer y las zonas ajustables. Los recortes por juego son puntos de partida; afínalos con las vistas de diagnóstico.
+La detección automática depende del texto y la geometría del HUD de cada juego: resolución, escalado, idioma o interfaces distintas pueden hacerla fallar. Por eso existe el enfriamiento, el aviso de "posible resultado", el botón de deshacer y las zonas ajustables. En MK11 el idioma de las etiquetas no importa (son gamertags), pero la ventana debe mostrarse sin escalado raro para que el OCR lea bien.
 
 ## Control desde el teléfono
 
