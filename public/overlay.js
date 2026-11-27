@@ -2,7 +2,20 @@
 
 const el = id => document.getElementById(id);
 const FIGHTER_ASSET_BASE = 'https://raw.githubusercontent.com/Lycan-ve/Hot-Coffee-Frontend/master/public/fighters/';
-const FIGHTERS = new Set(['Ahri','Akali','Blitzcrank','Braum','Caitlyn','Darius','Ekko','Illaoi','Jinx','Lux','Samira','Senna','Sett','Teemo','Thresh','Vi','Warwick','Yasuo']);
+// Iconos locales de Guilty Gear Strive dentro del propio repo (public/Assest).
+const GGST_ASSET_PATH = '/Assest/' + encodeURIComponent('Guilty Gear Strive') + '/';
+const GGST_ICON_KEYS = { 'A.B.A': 'ABA', 'Bedman?': 'Bed', 'Happy Chaos': 'HappyChaos' };
+const CHAMPIONS_2XKO = new Set(['Ahri','Akali','Blitzcrank','Braum','Caitlyn','Darius','Ekko','Illaoi','Jinx','Lux','Samira','Senna','Sett','Teemo','Thresh','Vi','Warwick','Yasuo']);
+const CHAMPIONS_GGST = new Set(['Sol','Ky','May','Axl','Chipp','Potemkin','Faust','Millia','Zato','Ramlethal','Leo','Nagoriyuki','Giovanna','Anji','I-No','Goldlewis','Jack-O','Happy Chaos','Baiken','Testament','Bridget','Sin','Bedman?','Asuka','Johnny','Elphelt','A.B.A','Slayer','Venom','Dizzy','Unika','Lucy']);
+
+function fighterAssetUrl(name, game) {
+  if (game === 'ggst') {
+    if (!CHAMPIONS_GGST.has(name)) return '';
+    return GGST_ASSET_PATH + 'icon_' + encodeURIComponent(GGST_ICON_KEYS[name] || name) + '_0.png';
+  }
+  if (!CHAMPIONS_2XKO.has(name)) return '';
+  return FIGHTER_ASSET_BASE + encodeURIComponent(name) + '.png';
+}
 
 function gameName(game) {
   return ({ '2xko': '2XKO', ggst: 'GUILTY GEAR STRIVE', mk11: 'MORTAL KOMBAT 11' })[game] || 'FIGHTING GAME';
@@ -13,15 +26,16 @@ function rate(profile) {
   return total ? Math.round((profile.wins / total) * 100) : 0;
 }
 
-function appendChips(container, values, className) {
+function appendChips(container, values, className, game) {
   container.replaceChildren();
   for (const value of values) {
     const chip = document.createElement('span');
     chip.className = className;
-    if (FIGHTERS.has(value)) {
+    const url = fighterAssetUrl(value, game);
+    if (url) {
       const image = document.createElement('img');
       image.className = 'fighter-chip-image';
-      image.src = FIGHTER_ASSET_BASE + encodeURIComponent(value) + '.png';
+      image.src = url;
       image.alt = '';
       image.loading = 'lazy';
       image.decoding = 'async';
@@ -48,7 +62,7 @@ function render(state) {
   el('wins').textContent = profile.wins;
   el('losses').textContent = profile.losses;
   el('win-rate').innerHTML = rate(profile) + '<span class="percent">%</span>';
-  appendChips(el('mains-list'), profile.mains.length ? profile.mains : ['Sin configurar'], 'main-chip');
+  appendChips(el('mains-list'), profile.mains.length ? profile.mains : ['Sin configurar'], 'main-chip', state.selectedGame);
 
   const streak = el('streak-pill');
   if (profile.streak !== 0) {
@@ -67,7 +81,7 @@ function render(state) {
     && Date.now() - profile.detectedAt < 45000;
   const detectedRow = el('team-detected-row');
   detectedRow.hidden = !isDetectionFresh;
-  if (!detectedRow.hidden) appendChips(el('detected-chips'), profile.detectedCharacters, 'detected-chip');
+  if (!detectedRow.hidden) appendChips(el('detected-chips'), profile.detectedCharacters, 'detected-chip', state.selectedGame);
 
   const opponentsFresh = Array.isArray(profile.detectedOpponents)
     && profile.detectedOpponents.length > 0
@@ -75,7 +89,7 @@ function render(state) {
     && Date.now() - profile.detectedOpponentsAt < 45000;
   const opponentsRow = el('team-opponents-row');
   opponentsRow.hidden = !opponentsFresh;
-  if (!opponentsRow.hidden) appendChips(el('opponents-chips'), profile.detectedOpponents, 'detected-chip');
+  if (!opponentsRow.hidden) appendChips(el('opponents-chips'), profile.detectedOpponents, 'detected-chip', state.selectedGame);
 
   const toast = el('result-toast');
   const result = state.lastResult;
