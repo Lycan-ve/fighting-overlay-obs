@@ -1,4 +1,4 @@
-# Fighting Overlay OBS — v0.7
+# Fighting Overlay OBS — v0.8
 
 Overlay y tracking local para OBS: marcador W/L, win rate, racha, historial de partidas, estadísticas y **detección automática por OCR** en 2XKO, Guilty Gear Strive y Mortal Kombat 11. Cada juego tiene su propio tema visual, y los mains y personajes detectados muestran retratos: iconos locales incluidos en `public/Assest` para Guilty Gear Strive y retratos del repositorio Hot-Coffee-Frontend para 2XKO (en MK11 el HUD no muestra personajes, así que se usan gamertags; sus iconos usan IDs numéricos y se activan rellenando `public/Assest/MK 11/names.json`).
 
@@ -10,7 +10,7 @@ La overlay cambia sola de diseño según el juego activo, también en la vista p
 *   **Mortal Kombat 11** — oro y sangre: fondo bronce oscuro, borde dorado, acento oro a rojo y tipografía épica Cinzel, como el marco dorado de su HUD.
 *   **Guilty Gear Strive** — negro, blanco y rosa: fondo negro, borde blanco, barra lateral magenta y tipografía Chakra Petch inclinada, como el HUD de GGST.
 
-Los temas viven en `public/themes.css`, y el pulido visual compartido (profundidad, tipografía Barlow Condensed y micro-animaciones) vive en `public/overlay-polish.css`, que se carga entre `styles.css` y `themes.css` para que cada tema conserve sus colores.
+Los temas viven en `public/themes.css`, el pulido visual compartido (profundidad, tipografía Barlow Condensed y micro-animaciones) en `public/overlay-polish.css`, que se carga entre `styles.css` y `themes.css`, y los acabados HUD de cada juego (barras de color, marcos biselados y cortes diagonales inspirados en las escenas del canal) en `public/themes-hud.css`, que se carga después de `themes.css`.
 
 ## Requisitos
 

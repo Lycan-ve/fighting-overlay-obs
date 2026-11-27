@@ -1,0 +1,159 @@
+/* v0.8 · Temas HUD inspirados en las escenas reales del canal
+   (scene-reference.webp = 2XKO, Scene MK 11.png, Scene GGST.png).
+   Se carga después de themes.css y lo refina. */
+
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,700;0,900;1,800;1,900&family=Cinzel:wght@700;900&family=Chakra+Petch:ital,wght@0,600;0,700;1,700&display=swap');
+
+/* =====================================================================
+   2XKO · barras teal, etiquetas naranja/amarillo, paneles marrón oscuro
+   y cortes diagonales, como el HUD del juego.
+   ===================================================================== */
+.overlay-card.theme-2xko{
+  --x-teal:#1fd1bd;--x-teal-d:#0e8f86;--x-orange:#ff7a1a;--x-yellow:#ffd21f;--x-lime:#9cf55a;
+  --glow:rgba(31,209,189,.45);
+  background:linear-gradient(100deg,rgba(24,18,15,.97),rgba(40,28,20,.95) 60%,rgba(28,20,16,.96));
+  border:0;border-radius:0;
+  clip-path:polygon(14px 0,100% 0,calc(100% - 14px) 100%,0 100%);
+  box-shadow:none;filter:drop-shadow(0 6px 16px rgba(0,0,0,.55));
+}
+.overlay-card.theme-2xko .overlay-accent{
+  width:100%!important;height:4px!important;top:0;left:0;
+  background:linear-gradient(90deg,var(--x-teal) 0 62%,var(--x-lime) 62% 64%,var(--x-orange) 64% 100%);
+}
+.overlay-card.theme-2xko::before{
+  background:
+    linear-gradient(180deg,transparent calc(100% - 3px),var(--x-yellow) calc(100% - 3px)) no-repeat 0 0/38% 100%,
+    repeating-linear-gradient(115deg,rgba(255,255,255,.03) 0 2px,transparent 2px 8px);
+}
+.overlay-card.theme-2xko .player-emblem{
+  border-radius:50%;border:2px solid var(--x-teal);color:#fff;
+  background:radial-gradient(circle at 35% 30%,#3a3a44,#121216);font-family:'Barlow Condensed',sans-serif;font-style:italic
+}
+.overlay-card.theme-2xko .eyebrow{
+  display:inline-block;padding:2px 8px 1px;color:#111;background:var(--x-teal);
+  clip-path:polygon(5px 0,100% 0,calc(100% - 5px) 100%,0 100%);letter-spacing:1.4px;font-weight:900
+}
+.overlay-card.theme-2xko .player-name{font:italic 900 24px/1 'Barlow Condensed',sans-serif;color:#fff;letter-spacing:1px;margin-top:4px;text-shadow:2px 2px 0 rgba(0,0,0,.6)}
+.overlay-card.theme-2xko .streak-pill{border:0;border-radius:0;color:#111;background:var(--x-yellow);font-style:italic;clip-path:polygon(5px 0,100% 0,calc(100% - 5px) 100%,0 100%)}
+.overlay-card.theme-2xko .stats-row{border-color:rgba(255,122,26,.35)!important}
+.overlay-card.theme-2xko .stat-number{font-style:italic;text-shadow:2px 2px 0 rgba(0,0,0,.7),0 0 14px currentColor}
+.overlay-card.theme-2xko .stat-win .stat-number{color:var(--x-teal)}
+.overlay-card.theme-2xko .stat-loss .stat-number{color:var(--x-orange)}
+.overlay-card.theme-2xko .stat-rate .stat-number{color:var(--x-yellow)}
+.overlay-card.theme-2xko .stat-label,.overlay-card.theme-2xko .mains-label{color:#d9c9b5}
+.overlay-card.theme-2xko .main-chip,.overlay-card.theme-2xko .detected-chip{
+  border-radius:0;font-style:italic;color:#fff;
+  background:linear-gradient(180deg,rgba(31,209,189,.28),rgba(14,143,134,.18));border:1px solid rgba(31,209,189,.6);
+  clip-path:polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%);padding-inline:10px
+}
+.overlay-card.theme-2xko .fighter-chip-image{border-radius:50%;border-color:var(--x-teal)}
+.overlay-card.theme-2xko .team-detected-row{border-radius:0;background:rgba(24,18,15,.95);border:1px solid var(--x-orange);clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)}
+.overlay-card.theme-2xko .team-detected-row .mains-label{color:var(--x-orange)}
+.overlay-card.theme-2xko .detector-live-dot{background:#ff3b3b;color:#ff3b3b}
+.overlay-card.theme-2xko .result-toast{font-style:italic;background:linear-gradient(100deg,rgba(24,18,15,.95),rgba(40,28,20,.95))}
+.overlay-card.theme-2xko .result-toast.win{color:var(--x-lime)}
+.overlay-card.theme-2xko .result-toast.loss{color:var(--x-orange)}
+
+/* =====================================================================
+   MORTAL KOMBAT 11 · marco dorado biselado, piedra oscura y brasas
+   ===================================================================== */
+.overlay-card.theme-mk11{
+  --m-gold:#f2cf6b;--m-gold-d:#9c7426;--m-blood:#c3261f;
+  --glow:rgba(242,207,107,.45);
+  background:
+    radial-gradient(120% 160% at 50% 120%,rgba(195,38,31,.22),transparent 60%),
+    linear-gradient(180deg,rgba(30,18,10,.97),rgba(14,9,6,.97));
+  border:2px solid transparent;border-radius:2px;
+  border-image:linear-gradient(90deg,var(--m-gold-d),var(--m-gold) 20%,#fff1bf 50%,var(--m-gold) 80%,var(--m-gold-d)) 1;
+  box-shadow:0 8px 26px rgba(0,0,0,.6),inset 0 0 0 1px rgba(0,0,0,.8),inset 0 0 0 3px rgba(156,116,38,.35);
+}
+.overlay-card.theme-mk11 .overlay-accent{
+  width:100%!important;height:3px!important;top:auto;bottom:0;left:0;
+  background:linear-gradient(90deg,transparent,var(--m-gold) 20%,#fff1bf 50%,var(--m-gold) 80%,transparent);
+}
+.overlay-card.theme-mk11::before{
+  background:
+    linear-gradient(135deg,var(--m-gold) 0 6px,transparent 6px) top left/14px 14px no-repeat,
+    linear-gradient(225deg,var(--m-gold) 0 6px,transparent 6px) top right/14px 14px no-repeat,
+    linear-gradient(45deg,var(--m-gold) 0 6px,transparent 6px) bottom left/14px 14px no-repeat,
+    linear-gradient(315deg,var(--m-gold) 0 6px,transparent 6px) bottom right/14px 14px no-repeat,
+    repeating-linear-gradient(0deg,rgba(255,220,150,.025) 0 1px,transparent 1px 4px);
+}
+.overlay-card.theme-mk11 .player-emblem{
+  border-radius:50%;transform:none;border:2px solid var(--m-gold);color:var(--m-gold);
+  background:radial-gradient(circle,#2a1a0c 55%,#120a05);box-shadow:0 0 0 2px #120a05,0 0 0 3px var(--m-gold-d),0 0 14px rgba(242,207,107,.35)
+}
+.overlay-card.theme-mk11 .player-emblem::after{display:none}
+.overlay-card.theme-mk11 .eyebrow{font-family:'Barlow Condensed',sans-serif;color:#d9b866}
+.overlay-card.theme-mk11 .player-name{font:900 21px/1 'Cinzel',serif;letter-spacing:2.5px;text-transform:uppercase;
+  background:linear-gradient(180deg,#fff4c9,var(--m-gold) 55%,var(--m-gold-d));-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;filter:drop-shadow(0 2px 2px rgba(0,0,0,.8))}
+.overlay-card.theme-mk11 .streak-pill{background:rgba(195,38,31,.25);border:1px solid var(--m-gold);color:#ffe7a8}
+.overlay-card.theme-mk11 .stats-row{border-color:rgba(242,207,107,.4)!important}
+.overlay-card.theme-mk11 .stat-number{font-family:'Cinzel',serif;text-shadow:0 2px 0 #000,0 0 12px currentColor}
+.overlay-card.theme-mk11 .stat-win .stat-number{color:var(--m-gold)}
+.overlay-card.theme-mk11 .stat-loss .stat-number{color:#ff4a3d}
+.overlay-card.theme-mk11 .stat-rate .stat-number{color:#fff1cf}
+.overlay-card.theme-mk11 .main-chip,.overlay-card.theme-mk11 .detected-chip{
+  font-family:'Barlow Condensed',sans-serif;color:#f7e3b0;border-radius:1px;
+  background:linear-gradient(180deg,rgba(156,116,38,.35),rgba(40,22,10,.6));border:1px solid rgba(242,207,107,.6)
+}
+.overlay-card.theme-mk11 .fighter-chip-image{border-color:var(--m-gold)}
+.overlay-card.theme-mk11 .team-detected-row{border-radius:1px;background:rgba(20,12,7,.95);border:1px solid var(--m-gold)}
+.overlay-card.theme-mk11 .detector-live-dot{background:var(--m-blood);color:var(--m-blood)}
+.overlay-card.theme-mk11 .result-toast{background:radial-gradient(ellipse,rgba(60,10,8,.95),rgba(14,9,6,.97))}
+.overlay-card.theme-mk11 .result-toast.win{color:var(--m-gold)}
+.overlay-card.theme-mk11 .result-toast.loss{color:#ff3b2f}
+
+/* =====================================================================
+   GUILTY GEAR STRIVE · banner negro con rojo, barras salmón, burst azul,
+   rombo del timer y línea amarilla inferior
+   ===================================================================== */
+.overlay-card.theme-ggst{
+  --g-red:#e0123c;--g-salmon:#f7b19c;--g-blue:#2f8cff;--g-yellow:#ffcf1f;
+  --glow:rgba(224,18,60,.5);
+  background:linear-gradient(180deg,rgba(14,10,12,.97),rgba(6,5,7,.97));
+  border:0;border-radius:0;
+  box-shadow:0 8px 26px rgba(0,0,0,.6),inset 0 -3px 0 var(--g-yellow),inset 0 1px 0 rgba(255,255,255,.12);
+}
+.overlay-card.theme-ggst .overlay-accent{
+  width:100%!important;height:4px!important;top:0;left:0;
+  background:linear-gradient(90deg,var(--g-red) 0 40%,var(--g-salmon) 40% 70%,var(--g-blue) 70% 100%);
+}
+.overlay-card.theme-ggst::before{
+  background:
+    linear-gradient(120deg,transparent 0 6%,rgba(224,18,60,.55) 6% 7%,transparent 7% 9%,rgba(224,18,60,.35) 9% 9.6%,transparent 9.6%),
+    linear-gradient(300deg,transparent 0 5%,rgba(224,18,60,.45) 5% 6%,transparent 6%),
+    repeating-linear-gradient(90deg,rgba(255,255,255,.02) 0 1px,transparent 1px 6px);
+}
+.overlay-card.theme-ggst .player-emblem{
+  border-radius:0;transform:rotate(45deg) scale(.82);border:2px solid var(--g-salmon);color:#fff;
+  background:radial-gradient(circle,#1d1418,#050405);box-shadow:0 0 0 2px #000,0 0 0 3px var(--g-red)
+}
+.overlay-card.theme-ggst .player-emblem span{transform:rotate(-45deg)}
+.overlay-card.theme-ggst .player-emblem::after{display:none}
+.overlay-card.theme-ggst .eyebrow{color:var(--g-yellow)}
+.overlay-card.theme-ggst .player-name{font:italic 700 22px/1 'Chakra Petch',sans-serif;color:#fff;transform:skewX(-6deg);text-shadow:0 0 10px rgba(224,18,60,.55),2px 2px 0 #000}
+.overlay-card.theme-ggst .streak-pill{background:var(--g-red);border:0;color:#fff}
+.overlay-card.theme-ggst .stats-row{border-color:rgba(224,18,60,.45)!important}
+.overlay-card.theme-ggst .stat-win .stat-number{color:var(--g-salmon)}
+.overlay-card.theme-ggst .stat-loss .stat-number{color:var(--g-red)}
+.overlay-card.theme-ggst .stat-rate .stat-number{color:var(--g-yellow)}
+.overlay-card.theme-ggst .stat-label,.overlay-card.theme-ggst .mains-label{color:#c8c3c6}
+.overlay-card.theme-ggst .main-chip,.overlay-card.theme-ggst .detected-chip{
+  color:#fff;background:linear-gradient(180deg,rgba(47,140,255,.35),rgba(20,50,110,.35));border:1px solid rgba(47,140,255,.7);border-radius:0
+}
+.overlay-card.theme-ggst .fighter-chip-image{border-color:var(--g-salmon)}
+.overlay-card.theme-ggst .team-detected-row{border-radius:0;background:rgba(8,6,8,.96);border:1px solid var(--g-red);box-shadow:inset 0 -2px 0 var(--g-yellow)}
+.overlay-card.theme-ggst .detector-live-dot{background:var(--g-red);color:var(--g-red)}
+.overlay-card.theme-ggst .result-toast{background:rgba(6,5,7,.95)}
+.overlay-card.theme-ggst .result-toast.win{color:var(--g-salmon)}
+.overlay-card.theme-ggst .result-toast.loss{color:var(--g-red)}
+
+/* Ajustes comunes de la barra inferior */
+.overlay-card[class*="theme-"].position-bottom-center .stats-row{border-top:0!important;border-bottom:0!important}
+.overlay-card[class*="theme-"] .eyebrow{white-space:nowrap}
+.position-bottom-center .overlay-topline{flex-basis:auto!important}
+/* La racha llega con colores en línea desde overlay.js: cada tema los reemplaza */
+.overlay-card.theme-2xko .streak-pill{color:#111!important;background:var(--x-yellow)!important}
+.overlay-card.theme-ggst .streak-pill{color:#fff!important;background:var(--g-red)!important;border:0!important}
+.overlay-card.theme-mk11 .streak-pill{color:#ffe7a8!important;background:rgba(195,38,31,.3)!important;border:1px solid var(--m-gold)!important}
