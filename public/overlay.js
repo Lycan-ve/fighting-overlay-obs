@@ -21,7 +21,7 @@ function appendChips(container, values, className) {
     if (FIGHTERS.has(value)) {
       const image = document.createElement('img');
       image.className = 'fighter-chip-image';
-      image.src = `${FIGHTER_ASSET_BASE}${encodeURIComponent(value)}.png`;
+      image.src = FIGHTER_ASSET_BASE + encodeURIComponent(value) + '.png';
       image.alt = '';
       image.loading = 'lazy';
       image.decoding = 'async';
@@ -40,20 +40,20 @@ function render(state) {
   if (!profile) return;
 
   const overlay = el('overlay');
-  overlay.className = `overlay-card position-${state.position || 'top-right'}`;
-  overlay.style.transform = `scale(${Number.isFinite(state.scale) ? state.scale : 0.9})`;
+  overlay.className = 'overlay-card position-' + (state.position || 'top-right');
+  overlay.style.transform = 'scale(' + (Number.isFinite(state.scale) ? state.scale : 0.9) + ')';
   overlay.style.opacity = String((Number.isFinite(state.opacity) ? state.opacity : 94) / 100);
   el('player-name').textContent = state.playerName || 'PLAYER';
-  el('game-label').textContent = `${gameName(state.selectedGame)} · RÉCORD DE SESIÓN`;
+  el('game-label').textContent = gameName(state.selectedGame) + ' · RÉCORD DE SESIÓN';
   el('wins').textContent = profile.wins;
   el('losses').textContent = profile.losses;
-  el('win-rate').innerHTML = `${rate(profile)}<span class="percent">%</span>`;
+  el('win-rate').innerHTML = rate(profile) + '<span class="percent">%</span>';
   appendChips(el('mains-list'), profile.mains.length ? profile.mains : ['Sin configurar'], 'main-chip');
 
   const streak = el('streak-pill');
   if (profile.streak !== 0) {
     streak.hidden = false;
-    streak.textContent = profile.streak > 0 ? `↗ ${profile.streak} W` : `↘ ${Math.abs(profile.streak)} L`;
+    streak.textContent = profile.streak > 0 ? '↗ ' + profile.streak + ' W' : '↘ ' + Math.abs(profile.streak) + ' L';
     streak.style.color = profile.streak > 0 ? '#83e1bc' : '#ff9298';
     streak.style.borderColor = profile.streak > 0 ? 'rgba(131,225,188,.28)' : 'rgba(255,146,152,.28)';
     streak.style.background = profile.streak > 0 ? 'rgba(131,225,188,.12)' : 'rgba(255,146,152,.12)';
@@ -69,11 +69,19 @@ function render(state) {
   detectedRow.hidden = !isDetectionFresh || state.selectedGame !== '2xko';
   if (!detectedRow.hidden) appendChips(el('detected-chips'), profile.detectedCharacters, 'detected-chip');
 
+  const opponentsFresh = Array.isArray(profile.detectedOpponents)
+    && profile.detectedOpponents.length > 0
+    && profile.detectedOpponentsAt
+    && Date.now() - profile.detectedOpponentsAt < 45000;
+  const opponentsRow = el('team-opponents-row');
+  opponentsRow.hidden = !opponentsFresh || state.selectedGame !== '2xko';
+  if (!opponentsRow.hidden) appendChips(el('opponents-chips'), profile.detectedOpponents, 'detected-chip');
+
   const toast = el('result-toast');
   const result = state.lastResult;
   if (result && result.game === state.selectedGame && Date.now() - result.at < 3500) {
     toast.hidden = false;
-    toast.className = `result-toast ${result.result}`;
+    toast.className = 'result-toast ' + result.result;
     toast.textContent = result.result === 'win' ? '✓ VICTORIA' : '✕ DERROTA';
   } else {
     toast.hidden = true;
