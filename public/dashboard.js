@@ -21,23 +21,65 @@ let latestDetected = [];
 
 const SCAN_PHASES = ['team', 'result', 'opponents', 'result'];
 const RESULT_COOLDOWN_MS = 10000;
-const GAME_NAMES = { '2xko': '2XKO', mk1: 'MORTAL KOMBAT 1', ggst: 'GUILTY GEAR STRIVE' };
-const THEME_CLASSES = ['theme-2xko', 'theme-mk1', 'theme-ggst'];
+const GAME_NAMES = { '2xko': '2XKO', ggst: 'GUILTY GEAR STRIVE', mk11: 'MORTAL KOMBAT 11' };
+const THEME_CLASSES = ['theme-2xko', 'theme-mk11', 'theme-ggst'];
 const FIGHTER_ASSET_BASE = 'https://raw.githubusercontent.com/Lycan-ve/Hot-Coffee-Frontend/master/public/fighters/';
 
-// Zonas de lectura sobre la captura (proporciones del ancho/alto de la ventana).
-// Ajusta estos valores si la vista de diagnóstico muestra un recorte desplazado.
-const HUD_CROP = {
-  left: { x: 0.105, y: 0.058, w: 0.335, h: 0.084 },
-  right: { x: 0.65, y: 0.058, w: 0.335, h: 0.084 }
-};
-const RESULT_ZONE = { x: 0.14, y: 0.28, w: 0.72, h: 0.40 };
-
-// Roster jugable consultado en la galería oficial y en las notas del parche 1.3.3.
-const CHAMPIONS = [
+// Rosters por juego para el OCR (nombres tal como aparecen en el HUD).
+const CHAMPIONS_2XKO = [
   'Ahri', 'Akali', 'Blitzcrank', 'Braum', 'Caitlyn', 'Darius', 'Ekko', 'Illaoi',
   'Jinx', 'Lux', 'Samira', 'Senna', 'Sett', 'Teemo', 'Thresh', 'Vi', 'Warwick', 'Yasuo'
 ];
+const CHAMPIONS_GGST = [
+  'Sol', 'Ky', 'May', 'Axl', 'Chipp', 'Potemkin', 'Faust', 'Millia', 'Zato',
+  'Ramlethal', 'Leo', 'Nagoriyuki', 'Giovanna', 'Anji', 'I-No', 'Goldlewis',
+  'Jack-O', 'Happy Chaos', 'Baiken', 'Testament', 'Bridget', 'Sin', 'Bedman?',
+  'Asuka', 'Johnny', 'Elphelt', 'A.B.A', 'Slayer', 'Venom', 'Dizzy', 'Unika', 'Lucy'
+];
+const CHAMPIONS_MK11 = [
+  'Scorpion', 'Liu Kang', 'Kung Lao', 'Sub-Zero', 'Raiden', 'Sonya', 'Johnny Cage',
+  'Cassie Cage', 'Jax', 'Jacqui Briggs', 'Baraka', 'Jade', 'Kitana', 'Mileena',
+  'Skarlet', "D'Vorah", 'Kotal Kahn', 'Geras', 'Kollector', 'Noob Saibot', 'Cetrion',
+  'Shao Kahn', 'Frost', 'Erron Black', 'Shang Tsung', 'Nightwolf', 'Sindel',
+  'Terminator', 'Joker', 'Spawn', 'Fujin', 'Sheeva', 'RoboCop', 'Rain', 'Rambo'
+];
+
+// Configuración de detección por juego: roster, tamaño de equipo, zonas del HUD
+// y de la pantalla de resultado (proporciones del ancho/alto de la ventana).
+// Ajusta estos valores con las vistas de diagnóstico del panel si un recorte queda desplazado.
+const GAME_DETECT = {
+  '2xko': {
+    roster: CHAMPIONS_2XKO,
+    teamSize: 2,
+    hud: { left: { x: 0.105, y: 0.058, w: 0.335, h: 0.084 }, right: { x: 0.65, y: 0.058, w: 0.335, h: 0.084 } },
+    result: { x: 0.14, y: 0.28, w: 0.72, h: 0.40 },
+    winWords: ['victory', 'victoria', 'youwin', 'wins', 'winner'],
+    lossWords: ['defeat', 'derrota', 'youlose', 'loser']
+  },
+  'ggst': {
+    roster: CHAMPIONS_GGST,
+    teamSize: 1,
+    hud: { left: { x: 0.02, y: 0.02, w: 0.30, h: 0.07 }, right: { x: 0.68, y: 0.02, w: 0.30, h: 0.07 } },
+    result: { x: 0.20, y: 0.20, w: 0.60, h: 0.50 },
+    winWords: ['youwin', 'win', 'wins'],
+    lossWords: ['youlose', 'lose', 'defeat']
+  },
+  'mk11': {
+    roster: CHAMPIONS_MK11,
+    teamSize: 1,
+    hud: { left: { x: 0.05, y: 0.02, w: 0.26, h: 0.07 }, right: { x: 0.69, y: 0.02, w: 0.26, h: 0.07 } },
+    result: { x: 0.20, y: 0.20, w: 0.60, h: 0.50 },
+    winWords: ['victory', 'youwin', 'wins', 'winner'],
+    lossWords: ['defeat', 'youlose', 'loser']
+  }
+};
+
+const FIGHTER_ASSET_ROSTERS = { '2xko': CHAMPIONS_2XKO, ggst: CHAMPIONS_GGST, mk11: CHAMPIONS_MK11 };
+
+function rosterFor(game) {
+  const config = GAME_DETECT[game];
+  return config ? config.roster : CHAMPIONS_2XKO;
+}
 
 function winRate(profile) {
   const total = profile.wins + profile.losses;
@@ -54,23 +96,28 @@ function setValueUnlessFocused(id, value) {
 }
 
 function fighterAssetUrl(name) {
-  if (!CHAMPIONS.includes(name)) return '';
+  // Los retratos PNG solo existen para el roster de 2XKO.
+  if (!CHAMPIONS_2XKO.includes(name)) return '';
   return FIGHTER_ASSET_BASE + encodeURIComponent(name) + '.png';
 }
 
 function createFighterChip(name, className) {
   const chip = document.createElement('span');
   chip.className = className;
-  const image = document.createElement('img');
-  image.className = 'fighter-chip-image';
-  image.src = fighterAssetUrl(name);
-  image.alt = '';
-  image.loading = 'lazy';
-  image.decoding = 'async';
-  image.onerror = () => { image.remove(); chip.classList.add('portrait-fallback'); };
+  const url = fighterAssetUrl(name);
+  if (url) {
+    const image = document.createElement('img');
+    image.className = 'fighter-chip-image';
+    image.src = url;
+    image.alt = '';
+    image.loading = 'lazy';
+    image.decoding = 'async';
+    image.onerror = () => { image.remove(); chip.classList.add('portrait-fallback'); };
+    chip.append(image);
+  }
   const label = document.createElement('span');
   label.textContent = name;
-  chip.append(image, label);
+  chip.append(label);
   return chip;
 }
 
@@ -88,32 +135,41 @@ function makeChips(container, names, className, emptyLabel) {
 }
 
 function currentMainsFromInput() {
-  return $('mains-input').value.split(',').map(name => name.trim()).filter(name => CHAMPIONS.includes(name)).slice(0, 3);
+  const roster = rosterFor(currentState ? currentState.selectedGame : $('game-select').value);
+  return $('mains-input').value.split(',').map(name => name.trim()).filter(name => roster.includes(name)).slice(0, 3);
 }
 
 function renderMainPicker(selectedNames) {
   const picker = $('main-picker');
   if (!picker) return;
   picker.replaceChildren();
+  const game = currentState ? currentState.selectedGame : $('game-select').value;
+  const roster = rosterFor(game);
   const selected = selectedNames || [];
-  for (const name of CHAMPIONS) {
+  for (const name of roster) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'fighter-option';
     button.dataset.name = name;
     button.setAttribute('aria-pressed', String(selected.includes(name)));
     button.title = name;
-    const image = document.createElement('img');
-    image.src = fighterAssetUrl(name);
-    image.alt = '';
-    image.loading = 'lazy';
-    image.decoding = 'async';
-    image.onerror = () => { image.remove(); button.classList.add('portrait-fallback'); };
+    const url = fighterAssetUrl(name);
+    if (url) {
+      const image = document.createElement('img');
+      image.src = url;
+      image.alt = '';
+      image.loading = 'lazy';
+      image.decoding = 'async';
+      image.onerror = () => { image.remove(); button.classList.add('portrait-fallback'); };
+      button.append(image);
+    }
     const label = document.createElement('span');
     label.textContent = name;
-    button.append(image, label);
+    button.append(label);
     picker.append(button);
   }
+  const title = $('picker-title');
+  if (title) title.textContent = 'ELIGE TUS MAINS · ' + (GAME_NAMES[game] || '');
 }
 
 function syncMainPicker(names) {
@@ -161,7 +217,7 @@ function renderHistory(profile) {
     copy.className = 'history-copy';
     const line = document.createElement('span');
     line.className = 'history-line';
-    const team = entry.team && entry.team.length ? entry.team.join(' + ') : 'Equipo no detectado';
+    const team = entry.team && entry.team.length ? entry.team.join(' + ') : 'Personaje no detectado';
     const opp = entry.opponents && entry.opponents.length ? ' vs ' + entry.opponents.join(' + ') : '';
     line.textContent = team + opp;
     const meta = document.createElement('span');
@@ -214,13 +270,35 @@ function renderCharStats(profile) {
   }
 }
 
+function renderToday(profile) {
+  const note = $('today-note');
+  if (!note) return;
+  const history = Array.isArray(profile.matchHistory) ? profile.matchHistory : [];
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+  let wins = 0;
+  let losses = 0;
+  for (const entry of history) {
+    if (entry.at && entry.at >= startOfDay.getTime()) {
+      if (entry.result === 'win') wins += 1;
+      else losses += 1;
+    }
+  }
+  if (!wins && !losses) {
+    note.textContent = 'HOY: sin partidas registradas todavía.';
+    return;
+  }
+  const total = wins + losses;
+  const pct = Math.round(wins / total * 100);
+  note.textContent = 'HOY: ' + wins + 'W · ' + losses + 'L · ' + pct + '% win rate.';
+}
+
 function render(state) {
   currentState = state;
   const profile = state.profiles[state.selectedGame];
   setValueUnlessFocused('player-name-input', state.playerName);
   setValueUnlessFocused('game-select', state.selectedGame);
   setValueUnlessFocused('mains-input', profile.mains.join(', '));
-  $('main-picker-wrap').hidden = state.selectedGame !== '2xko';
   renderMainPicker(currentMainsFromInput());
   $('picker-hint').textContent = profile.mains.length ? profile.mains.length + '/3 personajes seleccionados.' : 'Selecciona hasta tres personajes. También puedes escribir sus nombres arriba.';
   $('position-select').value = state.position;
@@ -234,6 +312,7 @@ function render(state) {
   $('summary-losses').textContent = profile.losses;
   $('summary-rate').textContent = winRate(profile) + '%';
   $('summary-streak').textContent = streakText(profile.streak);
+  renderToday(profile);
   renderHistory(profile);
   renderCharStats(profile);
 
@@ -248,14 +327,14 @@ function render(state) {
     && profile.detectedCharacters.length > 0
     && profile.detectedAt
     && Date.now() - profile.detectedAt < 45000;
-  $('preview-team-row').hidden = !detectedFresh || state.selectedGame !== '2xko';
+  $('preview-team-row').hidden = !detectedFresh;
   if (!$('preview-team-row').hidden) makeChips($('preview-team-chips'), profile.detectedCharacters, 'detected-chip', '');
 
   const opponentsFresh = Array.isArray(profile.detectedOpponents)
     && profile.detectedOpponents.length > 0
     && profile.detectedOpponentsAt
     && Date.now() - profile.detectedOpponentsAt < 45000;
-  $('preview-opponents-row').hidden = !opponentsFresh || state.selectedGame !== '2xko';
+  $('preview-opponents-row').hidden = !opponentsFresh;
   if (!$('preview-opponents-row').hidden) makeChips($('preview-opponents-chips'), profile.detectedOpponents, 'detected-chip', '');
 
   const streak = $('preview-streak');
@@ -407,9 +486,9 @@ function setDetectorStatus(message, stateName) {
 
 function showDetected(names, confidence) {
   latestDetected = names || [];
-  makeChips($('detected-list'), latestDetected, 'detected-chip', 'No se reconocen campeones todavía');
+  makeChips($('detected-list'), latestDetected, 'detected-chip', 'No se reconocen personajes todavía');
   $('detected-confidence').textContent = confidence == null ? 'LECTURA GUARDADA' : 'OCR ' + Math.round(confidence) + '%';
-  $('apply-detected').disabled = latestDetected.length === 0 || (currentState && currentState.selectedGame !== '2xko');
+  $('apply-detected').disabled = latestDetected.length === 0 || !currentState;
 }
 
 function normalizeText(value) {
@@ -430,13 +509,14 @@ function levenshtein(a, b) {
   return row[b.length];
 }
 
-function findChampionNames(text) {
+function findRosterNames(text, game) {
+  const roster = rosterFor(game);
   const normalized = normalizeText(text);
   const compact = normalized.replace(/[^a-z]/g, '');
   const tokens = normalized.match(/[a-z]+/g) || [];
   const found = [];
 
-  for (const champion of CHAMPIONS) {
+  for (const champion of roster) {
     const key = normalizeText(champion).replace(/[^a-z]/g, '');
     let matched = key.length <= 3 ? tokens.includes(key) : compact.includes(key);
     if (!matched) {
@@ -447,17 +527,19 @@ function findChampionNames(text) {
     }
     if (matched) found.push(champion);
   }
-  // El HUD de 2XKO muestra primero el Point y luego el Assist. Limita el equipo a dos nombres.
-  return found.slice(0, 2);
+  // 2XKO muestra Point y Assist; GGST y MK11 un solo personaje.
+  const teamSize = GAME_DETECT[game] ? GAME_DETECT[game].teamSize : 1;
+  return found.slice(0, teamSize);
 }
 
-// Palabras clave de la pantalla de resultado. Dos lecturas seguidas del mismo
-// veredicto registran la partida (si el registro automático está activado).
-function findResult(text) {
+// Palabras clave de la pantalla de resultado por juego. Dos lecturas seguidas
+// del mismo veredicto registran la partida (si el registro automático está activado).
+function findResult(text, game) {
+  const config = GAME_DETECT[game] || GAME_DETECT['2xko'];
   const compact = normalizeText(text).replace(/[^a-z]/g, '');
   if (!compact) return '';
-  if (/(defeat|derrota|youlose|loser)/.test(compact)) return 'loss';
-  if (/(victory|victoria|youwin|wins|winner)/.test(compact)) return 'win';
+  if (config.lossWords.some(word => compact.includes(word))) return 'loss';
+  if (config.winWords.some(word => compact.includes(word))) return 'win';
   return '';
 }
 
@@ -470,31 +552,39 @@ function drawCrop(video, crop, canvas) {
   return canvas;
 }
 
+function activeGame() {
+  return currentState ? currentState.selectedGame : $('game-select').value;
+}
+
 function prepareTeamCrop(side, canvas) {
   const video = $('capture-video');
   if (!video.videoWidth || !video.videoHeight) return null;
-  return drawCrop(video, HUD_CROP[side] || HUD_CROP.left, canvas);
+  const config = GAME_DETECT[activeGame()] || GAME_DETECT['2xko'];
+  return drawCrop(video, config.hud[side] || config.hud.left, canvas);
 }
 
 function prepareResultCrop() {
   const video = $('capture-video');
   if (!video.videoWidth || !video.videoHeight) return null;
-  return drawCrop(video, RESULT_ZONE, $('result-crop-preview'));
+  const config = GAME_DETECT[activeGame()] || GAME_DETECT['2xko'];
+  return drawCrop(video, config.result, $('result-crop-preview'));
 }
 
 async function postDetectedCharacters(names) {
-  const saved = await api('/api/detected-characters', { game: '2xko', characters: names });
+  const game = activeGame();
+  const saved = await api('/api/detected-characters', { game, characters: names });
   lastUpdatedAt = saved.updatedAt;
   render(saved);
   showDetected(names, null);
-  setDetectorStatus('Equipo reconocido: ' + names.join(' + '), 'active');
-  // Nuevo equipo en pantalla = nueva partida: reinicia el debounce de resultados.
+  setDetectorStatus('Personajes reconocidos: ' + names.join(' + '), 'active');
+  // Nuevo personaje en pantalla = nueva partida: reinicia el debounce de resultados.
   stableResult = '';
   stableResultCount = 0;
 }
 
 async function scanTeamFrame() {
   if (!ocrWorker) return;
+  const game = activeGame();
   const side = $('hud-side').value;
   const canvas = prepareTeamCrop(side, $('ocr-crop-preview'));
   if (!canvas) throw new Error('Esperando imagen de la ventana compartida…');
@@ -502,7 +592,7 @@ async function scanTeamFrame() {
   const text = (result && result.data && result.data.text) || '';
   const confidence = result && result.data ? result.data.confidence : undefined;
   $('ocr-text').textContent = text.trim() || '(No se reconoció texto en este recorte)';
-  const names = findChampionNames(text);
+  const names = findRosterNames(text, game);
   showDetected(names, confidence);
 
   if (names.length) {
@@ -520,12 +610,13 @@ async function scanTeamFrame() {
   } else {
     stableCandidate = '';
     stableCandidateCount = 0;
-    setDetectorStatus('No se detectan campeones; comprueba el recorte y el lado.', 'scanning');
+    setDetectorStatus('No se detectan personajes; comprueba el recorte y el lado.', 'scanning');
   }
 }
 
 async function scanOpponentFrame() {
   if (!ocrWorker) return;
+  const game = activeGame();
   const side = $('hud-side').value === 'left' ? 'right' : 'left';
   const canvas = prepareTeamCrop(side, $('ocr-opponent-preview'));
   if (!canvas) throw new Error('Esperando imagen de la ventana compartida…');
@@ -533,7 +624,7 @@ async function scanOpponentFrame() {
   const text = (result && result.data && result.data.text) || '';
   const opponentText = $('opponent-text');
   if (opponentText) opponentText.textContent = text.trim() || '(Sin texto en el lado rival)';
-  const names = findChampionNames(text);
+  const names = findRosterNames(text, game);
   if (names.length) {
     const signature = names.join('|');
     if (signature === stableOpponent) stableOpponentCount += 1;
@@ -542,7 +633,7 @@ async function scanOpponentFrame() {
       stableOpponentCount = 1;
     }
     if (stableOpponentCount >= 2 && signature !== lastPostedOpponent) {
-      const saved = await api('/api/detected-characters', { game: '2xko', opponents: names });
+      const saved = await api('/api/detected-characters', { game, opponents: names });
       lastUpdatedAt = saved.updatedAt;
       render(saved);
       lastPostedOpponent = signature;
@@ -556,13 +647,14 @@ async function scanOpponentFrame() {
 
 async function scanResultFrame() {
   if (!ocrWorker) return;
+  const game = activeGame();
   const canvas = prepareResultCrop();
   if (!canvas) throw new Error('Esperando imagen de la ventana compartida…');
   const result = await ocrWorker.recognize(canvas);
   const text = (result && result.data && result.data.text) || '';
   const resultText = $('result-text');
   if (resultText) resultText.textContent = text.trim() || '(Sin texto en la zona de resultado)';
-  const verdict = findResult(text);
+  const verdict = findResult(text, game);
   if (!verdict) {
     stableResult = '';
     stableResultCount = 0;
@@ -639,8 +731,9 @@ async function stopDetector(message) {
 
 async function startDetector() {
   if (detectorRunning || captureStream) return;
-  if (!currentState || currentState.selectedGame !== '2xko' || $('game-select').value !== '2xko') {
-    setDetectorStatus('Selecciona y guarda 2XKO como juego activo.', 'error');
+  const game = $('game-select').value;
+  if (!currentState || !GAME_DETECT[game]) {
+    setDetectorStatus('Selecciona y guarda un juego válido.', 'error');
     return;
   }
   if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
@@ -653,7 +746,7 @@ async function startDetector() {
   }
 
   try {
-    setDetectorStatus('Selecciona la ventana de 2XKO en el cuadro del navegador…', 'scanning');
+    setDetectorStatus('Selecciona la ventana de ' + (GAME_NAMES[game] || 'tu juego') + ' en el cuadro del navegador…', 'scanning');
     captureStream = await navigator.mediaDevices.getDisplayMedia({
       video: { frameRate: { ideal: 5, max: 10 } },
       audio: false
@@ -694,7 +787,7 @@ async function startDetector() {
     if (track) track.addEventListener('ended', () => {
       stopDetector('La captura de pantalla se detuvo.');
     }, { once: true });
-    setDetectorStatus('Detector activo: equipo, rivales y resultados se leen automáticamente.', 'active');
+    setDetectorStatus('Detector activo: personajes, rivales y resultados se leen automáticamente.', 'active');
     scanFrame();
   } catch (error) {
     await stopDetector(error.name === 'NotAllowedError' ? 'Permiso de captura cancelado.' : 'No se pudo iniciar: ' + error.message);
@@ -702,7 +795,7 @@ async function startDetector() {
 }
 
 async function applyDetectedAsMains() {
-  if (!latestDetected.length || !currentState || currentState.selectedGame !== '2xko') return;
+  if (!latestDetected.length || !currentState) return;
   $('mains-input').value = latestDetected.join(', ');
   syncMainPicker(latestDetected);
   await saveProfile();
@@ -740,11 +833,11 @@ $('hud-side').addEventListener('change', () => {
 });
 $('game-select').addEventListener('change', () => {
   const game = $('game-select').value;
-  if (game !== '2xko' && detectorRunning) stopDetector('Detección detenida: 2XKO ya no es el juego seleccionado.');
+  if (detectorRunning) stopDetector('Detección detenida: cambiaste de juego.');
   if (currentState) $('mains-input').value = currentState.profiles[game].mains.join(', ');
-  $('main-picker-wrap').hidden = game !== '2xko';
+  renderMainPicker(currentMainsFromInput());
   syncMainPicker(currentMainsFromInput());
-  $('apply-detected').disabled = game !== '2xko' || latestDetected.length === 0;
+  $('apply-detected').disabled = latestDetected.length === 0;
 });
 $('scale-range').addEventListener('input', () => $('scale-output').value = $('scale-range').value + '%');
 $('opacity-range').addEventListener('input', () => $('opacity-output').value = $('opacity-range').value + '%');
