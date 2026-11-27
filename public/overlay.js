@@ -5,7 +5,7 @@ const FIGHTER_ASSET_BASE = 'https://raw.githubusercontent.com/Lycan-ve/Hot-Coffe
 const FIGHTERS = new Set(['Ahri','Akali','Blitzcrank','Braum','Caitlyn','Darius','Ekko','Illaoi','Jinx','Lux','Samira','Senna','Sett','Teemo','Thresh','Vi','Warwick','Yasuo']);
 
 function gameName(game) {
-  return ({ '2xko': '2XKO', mk1: 'MORTAL KOMBAT 1', ggst: 'GUILTY GEAR STRIVE' })[game] || 'FIGHTING GAME';
+  return ({ '2xko': '2XKO', ggst: 'GUILTY GEAR STRIVE', mk11: 'MORTAL KOMBAT 11' })[game] || 'FIGHTING GAME';
 }
 
 function rate(profile) {
@@ -66,7 +66,7 @@ function render(state) {
     && profile.detectedAt
     && Date.now() - profile.detectedAt < 45000;
   const detectedRow = el('team-detected-row');
-  detectedRow.hidden = !isDetectionFresh || state.selectedGame !== '2xko';
+  detectedRow.hidden = !isDetectionFresh;
   if (!detectedRow.hidden) appendChips(el('detected-chips'), profile.detectedCharacters, 'detected-chip');
 
   const opponentsFresh = Array.isArray(profile.detectedOpponents)
@@ -74,7 +74,7 @@ function render(state) {
     && profile.detectedOpponentsAt
     && Date.now() - profile.detectedOpponentsAt < 45000;
   const opponentsRow = el('team-opponents-row');
-  opponentsRow.hidden = !opponentsFresh || state.selectedGame !== '2xko';
+  opponentsRow.hidden = !opponentsFresh;
   if (!opponentsRow.hidden) appendChips(el('opponents-chips'), profile.detectedOpponents, 'detected-chip');
 
   const toast = el('result-toast');
