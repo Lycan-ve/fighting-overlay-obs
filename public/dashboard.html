@@ -96,6 +96,22 @@
             <canvas id="result-crop-preview" width="720" height="300"></canvas>
           </div>
           <button id="apply-detected" class="button button-secondary" disabled>Usar personajes detectados como mis mains</button>
+          <details class="ocr-details" open>
+            <summary>Tracking por API de GGST · sin captura ni OCR (recomendado)</summary>
+            <div class="ggst-api-block">
+              <p class="section-description">Genera un token con el helper incluido (carpeta tools/ggst-token: doble clic en ggst-token.bat con Steam abierto y GGST instalado; requiere Go) y pégalo aquí. El servidor sondeará tu historial de replays cada 20 segundos y registrará victorias, derrotas, tu personaje y el rival automáticamente. No hay captura de pantalla ni OCR, así que no consume FPS.</p>
+              <label class="field-label" for="ggst-token-input">Token de sesión</label>
+              <input id="ggst-token-input" class="text-input" placeholder="Token que imprime ggst-token.bat" autocomplete="off">
+              <label class="field-label" for="ggst-player-id-input">Player ID</label>
+              <input id="ggst-player-id-input" class="text-input" placeholder="Player ID que imprime ggst-token.bat" autocomplete="off">
+              <button id="ggst-connect" class="button button-secondary">Conectar la API de GGST</button>
+              <div class="toggle-row">
+                <div class="toggle-copy"><strong>Tracking por API de GGST</strong><small>El servidor consulta el historial de replays y registra cada partida nueva entre 0 y 20 segundos después de que termina.</small></div>
+                <label class="switch"><input type="checkbox" id="ggst-api-toggle"><span class="track"></span><span class="thumb"></span></label>
+              </div>
+              <div id="ggst-api-status" class="inline-message" role="status"></div>
+            </div>
+          </details>
           <details class="ocr-details">
             <summary>Ver texto reconocido · tu lado</summary>
             <pre id="ocr-text">Esperando captura…</pre>
@@ -210,7 +226,7 @@
         </section>
       </aside>
     </main>
-    <footer class="dashboard-footer"><span>FIGHTING OVERLAY <b>v0.10</b></span><span>Datos guardados localmente en este equipo.</span></footer>
+    <footer class="dashboard-footer"><span>FIGHTING OVERLAY <b>v0.11</b></span><span>Datos guardados localmente en este equipo.</span></footer>
   </div>
   <video id="capture-video" muted playsinline></video>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>

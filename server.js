@@ -73,6 +73,7 @@ function defaultState() {
     gameAutoDetect: false,
     sessionResetMode: 'manual',
     sessionIdleMinutes: 30,
+    ggstApi: { enabled: false, token: '', playerId: '', baselined: false, lastStatus: '', seenKeys: [] },
     profiles: {
       '2xko': defaultProfile(['Ekko', 'Warwick']),
       'ggst': defaultProfile([]),
@@ -224,6 +225,7 @@ function sanitizeState(input) {
   next.gameAutoDetect = typeof input.gameAutoDetect === 'boolean' ? input.gameAutoDetect : state.gameAutoDetect;
   next.sessionResetMode = ['manual', 'daily', 'idle'].includes(input.sessionResetMode) ? input.sessionResetMode : (state.sessionResetMode || 'manual');
   next.sessionIdleMinutes = Number.isFinite(Number(input.sessionIdleMinutes)) ? Math.min(720, Math.max(1, Math.round(Number(input.sessionIdleMinutes)))) : (state.sessionIdleMinutes || 30);
+  next.ggstApi = sanitizeGgstApi(input.ggstApi, state.ggstApi);
 
   for (const game of Object.keys(GAME_LABELS)) {
     const oldProfile = state.profiles[game] || next.profiles[game];
@@ -280,6 +282,258 @@ function autoResetSessionIfNeeded(profile) {
   }
   if (shouldReset) resetSessionCounters(profile);
   return shouldReset;
+}
+
+
+// =====================================================================
+// API de replays de GGST (no oficial, cifrada). El token lo genera el
+// helper de Steam incluido en tools/ggst-token; el token y el Player ID
+// se pegan en el panel y este servidor sondea el historial de replays.
+// =====================================================================
+const GGST_BASE = 'https://ggst-game.guiltygear.com';
+const GGST_API_KEY = Buffer.from('EEBC1F57487F51921C0465665F8AE6D1658BB26DE6F8A069A3520293A572078F', 'hex');
+const GGST_API_VERSION = '0.4.8';
+const GGST_POLL_MS = 20000;
+// IDs de personaje de la API (orden oficial del juego).
+const GGST_CHARACTERS = ['Sol', 'Ky', 'May', 'Axl', 'Chipp', 'Potemkin', 'Faust', 'Millia', 'Zato', 'Ramlethal', 'Leo', 'Nagoriyuki', 'Giovanna', 'Anji', 'I-No', 'Goldlewis', 'Jack-O', 'Happy Chaos', 'Baiken', 'Testament', 'Bridget', 'Sin', 'Bedman?', 'Asuka', 'Johnny', 'Elphelt', 'A.B.A', 'Slayer', 'Dizzy', 'Venom', 'Unika', 'Lucy', 'Jam', 'Robo-Ky'];
+
+function ggstCharacterName(id) {
+  const index = Number(id);
+  return Number.isInteger(index) && index >= 0 && index < GGST_CHARACTERS.length ? GGST_CHARACTERS[index] : '';
+}
+
+// Codificador MessagePack mínimo (solo lo que usa esta API: arrays, cadenas y enteros).
+function msgpackEncode(value) {
+  if (value === null || value === undefined) return Buffer.from([0xc0]);
+  if (typeof value === 'number') {
+    if (Number.isInteger(value)) {
+      if (value >= 0 && value <= 0x7f) return Buffer.from([value]);
+      if (value < 0 && value >= -32) return Buffer.from([256 + value]);
+      if (value >= -128 && value <= 127) return Buffer.from([0xd0, value & 0xff]);
+      if (value >= -32768 && value <= 32767) { const b = Buffer.alloc(3); b[0] = 0xd1; b.writeInt16BE(value, 1); return b; }
+      if (value >= -2147483648 && value <= 2147483647) { const b = Buffer.alloc(5); b[0] = 0xd2; b.writeInt32BE(value, 1); return b; }
+      const b = Buffer.alloc(9); b[0] = 0xd3; b.writeBigInt64BE(BigInt(value), 1); return b;
+    }
+    const b = Buffer.alloc(9); b[0] = 0xcb; b.writeDoubleBE(value, 1); return b;
+  }
+  if (typeof value === 'string') {
+    const utf8 = Buffer.from(value, 'utf8');
+    if (utf8.length <= 31) return Buffer.concat([Buffer.from([0xa0 + utf8.length]), utf8]);
+    if (utf8.length <= 255) return Buffer.concat([Buffer.from([0xd9, utf8.length]), utf8]);
+    if (utf8.length <= 65535) { const b = Buffer.alloc(3); b[0] = 0xda; b.writeUInt16BE(utf8.length, 1); return Buffer.concat([b, utf8]); }
+    const b = Buffer.alloc(5); b[0] = 0xdb; b.writeUInt32BE(utf8.length, 1); return Buffer.concat([b, utf8]);
+  }
+  if (Array.isArray(value)) {
+    let head;
+    if (value.length <= 15) head = Buffer.from([0x90 + value.length]);
+    else if (value.length <= 65535) { head = Buffer.alloc(3); head[0] = 0xdc; head.writeUInt16BE(value.length, 1); }
+    else { head = Buffer.alloc(5); head[0] = 0xdd; head.writeUInt32BE(value.length, 1); }
+    return Buffer.concat([head, ...value.map(msgpackEncode)]);
+  }
+  throw new Error('Tipo no soportado por el codificador msgpack.');
+}
+
+// Decodificador MessagePack mínimo (arrays, mapas, cadenas, enteros, binarios).
+function msgpackDecode(buffer) {
+  let offset = 0;
+  function take(length) {
+    if (offset + length > buffer.length) throw new Error('msgpack truncado.');
+    const out = buffer.subarray(offset, offset + length);
+    offset += length;
+    return out;
+  }
+  function decode() {
+    const byte = take(1)[0];
+    if (byte <= 0x7f) return byte;
+    if (byte >= 0xe0) return byte - 256;
+    if (byte >= 0x80 && byte <= 0x8f) {
+      const obj = {};
+      for (let i = 0; i < (byte & 0x0f); i += 1) { const key = decode(); obj[String(key)] = decode(); }
+      return obj;
+    }
+    if (byte >= 0x90 && byte <= 0x9f) {
+      const arr = [];
+      for (let i = 0; i < (byte & 0x0f); i += 1) arr.push(decode());
+      return arr;
+    }
+    if (byte >= 0xa0 && byte <= 0xbf) return take(byte & 0x1f).toString('utf8');
+    switch (byte) {
+      case 0xc0: return null;
+      case 0xc2: return false;
+      case 0xc3: return true;
+      case 0xc4: return Buffer.from(take(take(1)[0]));
+      case 0xc5: return Buffer.from(take(take(2).readUInt16BE(0)));
+      case 0xc6: return Buffer.from(take(Number(take(4).readUInt32BE(0))));
+      case 0xca: return take(4).readFloatBE(0);
+      case 0xcb: return take(8).readDoubleBE(0);
+      case 0xcc: return take(1)[0];
+      case 0xcd: return take(2).readUInt16BE(0);
+      case 0xce: return take(4).readUInt32BE(0);
+      case 0xcf: return Number(take(8).readBigUInt64BE(0));
+      case 0xd0: return take(1).readInt8(0);
+      case 0xd1: return take(2).readInt16BE(0);
+      case 0xd2: return take(4).readInt32BE(0);
+      case 0xd3: return Number(take(8).readBigInt64BE(0));
+      case 0xd9: return take(take(1)[0]).toString('utf8');
+      case 0xda: return take(take(2).readUInt16BE(0)).toString('utf8');
+      case 0xdb: return take(Number(take(4).readUInt32BE(0))).toString('utf8');
+      case 0xdc: { const count = take(2).readUInt16BE(0); const arr = []; for (let i = 0; i < count; i += 1) arr.push(decode()); return arr; }
+      case 0xdd: { const count = Number(take(4).readUInt32BE(0)); const arr = []; for (let i = 0; i < count; i += 1) arr.push(decode()); return arr; }
+      case 0xde: { const count = take(2).readUInt16BE(0); const obj = {}; for (let i = 0; i < count; i += 1) { const key = decode(); obj[String(key)] = decode(); } return obj; }
+      case 0xdf: { const count = Number(take(4).readUInt32BE(0)); const obj = {}; for (let i = 0; i < count; i += 1) { const key = decode(); obj[String(key)] = decode(); } return obj; }
+      default: throw new Error('msgpack: tipo desconocido 0x' + byte.toString(16));
+    }
+  }
+  return decode();
+}
+
+function ggstEncrypt(plaintextBuffer) {
+  const nonce = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', GGST_API_KEY, nonce);
+  const encrypted = Buffer.concat([cipher.update(plaintextBuffer), cipher.final()]);
+  return Buffer.concat([nonce, encrypted, cipher.getAuthTag()]).toString('base64url');
+}
+
+function ggstDecrypt(responseBuffer) {
+  if (responseBuffer.length < 28) throw new Error('Respuesta de GGST demasiado corta.');
+  const nonce = responseBuffer.subarray(0, 12);
+  const tag = responseBuffer.subarray(responseBuffer.length - 16);
+  const data = responseBuffer.subarray(12, responseBuffer.length - 16);
+  const decipher = crypto.createDecipheriv('aes-256-gcm', GGST_API_KEY, nonce);
+  decipher.setAuthTag(tag);
+  return Buffer.concat([decipher.update(data), decipher.final()]);
+}
+
+async function ggstCall(path, payload) {
+  const response = await fetch(GGST_BASE + path, {
+    method: 'POST',
+    headers: {
+      'User-Agent': 'GGST/Steam',
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Cache-Control': 'no-store',
+      'x-client-version': '1'
+    },
+    body: 'data=' + ggstEncrypt(msgpackEncode(payload))
+  });
+  if (!response.ok) throw new Error('la API respondió HTTP ' + response.status);
+  return msgpackDecode(ggstDecrypt(Buffer.from(await response.arrayBuffer())));
+}
+
+// [playerId, token, 10, version, plataforma] + cuerpo de catalog/get_replay
+// con el historial filtrado a tus propias partidas.
+function ggstReplaysRequest(playerId, token, index, perPage) {
+  return [
+    [playerId, token, 10, GGST_API_VERSION, 3],
+    [1, index, perPage, [-1, 0, 0, 22, 0, 99, [playerId], -1, -1, 0, 1, -1], 6]
+  ];
+}
+
+async function ggstFetchReplays(session) {
+  const decoded = await ggstCall('/api/catalog/get_replay', ggstReplaysRequest(session.playerId, session.token, 0, 10));
+  const body = Array.isArray(decoded) && Array.isArray(decoded[1]) ? decoded[1] : null;
+  const raw = body && Array.isArray(body[3]) ? body[3] : [];
+  return raw.map((entry) => {
+    const player = (value) => ({
+      id: String(Array.isArray(value) && value[0] != null ? value[0] : ''),
+      name: String(Array.isArray(value) && value[1] != null ? value[1] : '')
+    });
+    return {
+      char1: Number(entry[3]),
+      char2: Number(entry[4]),
+      player1: player(entry[5]),
+      player2: player(entry[6]),
+      winner: Number(entry[7]),
+      date: typeof entry[8] === 'string' ? entry[8] : ''
+    };
+  }).filter((replay) => replay.date);
+}
+
+function sanitizeGgstApi(raw, old) {
+  const session = raw && typeof raw === 'object' ? raw : {};
+  const base = old || { enabled: false, token: '', playerId: '', baselined: false, lastStatus: '', seenKeys: [] };
+  return {
+    enabled: typeof session.enabled === 'boolean' ? session.enabled : base.enabled,
+    token: typeof session.token === 'string' ? session.token.trim().replace(/[^A-Za-z0-9]/g, '').slice(0, 80) : base.token,
+    playerId: typeof session.playerId === 'string' ? session.playerId.trim().replace(/[^0-9]/g, '').slice(0, 24) : base.playerId,
+    baselined: typeof session.baselined === 'boolean' ? session.baselined : base.baselined,
+    lastStatus: cleanString(session.lastStatus, base.lastStatus || '', 140),
+    seenKeys: Array.isArray(session.seenKeys) ? session.seenKeys.filter((key) => typeof key === 'string' && key.length < 120).slice(-200) : (base.seenKeys || [])
+  };
+}
+
+// Registro común de partidas: lo usan el endpoint manual y el sondeo de la API.
+function recordMatch(game, result, team, opponents, source) {
+  const profile = state.profiles[game];
+  profile.charStats = profile.charStats && typeof profile.charStats === 'object' ? profile.charStats : {};
+  profile.matchHistory = Array.isArray(profile.matchHistory) ? profile.matchHistory : [];
+  autoResetSessionIfNeeded(profile);
+  if (result === 'win') {
+    profile.wins += 1;
+    profile.streak = profile.streak > 0 ? profile.streak + 1 : 1;
+  } else {
+    profile.losses += 1;
+    profile.streak = profile.streak < 0 ? profile.streak - 1 : -1;
+  }
+  for (const name of team) {
+    const stats = profile.charStats[name] || (profile.charStats[name] = { wins: 0, losses: 0 });
+    if (result === 'win') stats.wins += 1;
+    else stats.losses += 1;
+  }
+  profile.matchHistory.push({
+    at: Date.now(),
+    result,
+    team,
+    opponents,
+    source: source === 'auto' ? 'auto' : 'manual'
+  });
+  if (profile.matchHistory.length > HISTORY_LIMIT) profile.matchHistory = profile.matchHistory.slice(-HISTORY_LIMIT);
+  state.lastResult = { result, game, at: Date.now() };
+  saveState();
+}
+
+// Sondeo del historial de replays: cada partida nueva se registra sola.
+async function pollGgstReplays() {
+  const session = state.ggstApi;
+  if (!session || !session.enabled || !session.token || !session.playerId) return;
+  try {
+    const replays = await ggstFetchReplays(session);
+    const fresh = [];
+    for (const replay of replays) {
+      const side = replay.player1.id === session.playerId ? 1 : replay.player2.id === session.playerId ? 2 : 0;
+      if (!side) continue;
+      const opponent = side === 1 ? replay.player2.name : replay.player1.name;
+      const key = replay.date + '|' + side + '|' + opponent;
+      if (session.seenKeys.includes(key)) continue;
+      fresh.push({ replay, side, key, opponent });
+    }
+    if (!session.baselined) {
+      // Primera conexión: marca el historial actual como ya conocido para no
+      // dar de alta partidas viejas de golpe.
+      session.seenKeys = fresh.map((item) => item.key).slice(-200);
+      session.baselined = true;
+      session.lastStatus = 'Conectado a la API de replays de GGST. Las partidas nuevas se registrarán solas.';
+      saveState();
+      return;
+    }
+    for (const item of fresh) {
+      const myCharId = item.side === 1 ? item.replay.char1 : item.replay.char2;
+      const oppCharId = item.side === 1 ? item.replay.char2 : item.replay.char1;
+      const team = [ggstCharacterName(myCharId)].filter(Boolean);
+      const opponents = [ggstCharacterName(oppCharId)].filter(Boolean);
+      const won = (item.side === 1 && item.replay.winner === 1) || (item.side === 2 && item.replay.winner === 2);
+      recordMatch('ggst', won ? 'win' : 'loss', team, opponents, 'auto');
+      session.seenKeys.push(item.key);
+      session.lastStatus = 'Registrada automáticamente: ' + (won ? 'victoria' : 'derrota') + ' vs ' + (item.opponent || 'rival') + '.';
+    }
+    if (fresh.length) session.seenKeys = session.seenKeys.slice(-200);
+    else if (!session.lastStatus.startsWith('Registrada')) {
+      session.lastStatus = 'API de GGST conectada, sin partidas nuevas. Última comprobación ' + new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }) + '.';
+    }
+    saveState();
+  } catch (error) {
+    session.lastStatus = 'La API de GGST no respondió: ' + error.message;
+    saveState();
+  }
 }
 
 const MIME_TYPES = {
@@ -361,33 +615,9 @@ const server = http.createServer(async (req, res) => {
       }
       const game = state.selectedGame;
       const profile = state.profiles[game];
-      autoResetSessionIfNeeded(profile);
-      profile.charStats = profile.charStats && typeof profile.charStats === 'object' ? profile.charStats : {};
-      profile.matchHistory = Array.isArray(profile.matchHistory) ? profile.matchHistory : [];
-      if (input.result === 'win') {
-        profile.wins += 1;
-        profile.streak = profile.streak > 0 ? profile.streak + 1 : 1;
-      } else {
-        profile.losses += 1;
-        profile.streak = profile.streak < 0 ? profile.streak - 1 : -1;
-      }
       const team = Array.isArray(profile.detectedCharacters) ? profile.detectedCharacters.slice(0, TEAM_LIMITS[game]) : [];
       const opponents = Array.isArray(profile.detectedOpponents) ? profile.detectedOpponents.slice(0, TEAM_LIMITS[game]) : [];
-      for (const name of team) {
-        const stats = profile.charStats[name] || (profile.charStats[name] = { wins: 0, losses: 0 });
-        if (input.result === 'win') stats.wins += 1;
-        else stats.losses += 1;
-      }
-      profile.matchHistory.push({
-        at: Date.now(),
-        result: input.result,
-        team,
-        opponents,
-        source: input.source === 'auto' ? 'auto' : 'manual'
-      });
-      if (profile.matchHistory.length > HISTORY_LIMIT) profile.matchHistory = profile.matchHistory.slice(-HISTORY_LIMIT);
-      state.lastResult = { result: input.result, game, at: Date.now() };
-      saveState();
+      recordMatch(game, input.result, team, opponents, input.source);
       return sendJson(res, 200, { ok: true, state });
     } catch (error) {
       return sendJson(res, 400, { ok: false, error: error.message });
@@ -476,6 +706,38 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  if (req.method === 'POST' && pathname === '/api/ggst-session') {
+    try {
+      const input = await readJson(req);
+      const token = typeof input.token === 'string' ? input.token.trim().replace(/[^A-Za-z0-9]/g, '').slice(0, 80) : '';
+      const playerId = typeof input.playerId === 'string' ? input.playerId.trim().replace(/[^0-9]/g, '').slice(0, 24) : '';
+      if (!token || !playerId) return sendJson(res, 400, { ok: false, error: 'Faltan el token o el Player ID que imprime el helper de Steam.' });
+      state.ggstApi.token = token;
+      state.ggstApi.playerId = playerId;
+      state.ggstApi.enabled = true;
+      state.ggstApi.baselined = false;
+      state.ggstApi.lastStatus = 'Comprobando la conexión con la API de GGST…';
+      saveState();
+      await pollGgstReplays();
+      return sendJson(res, 200, { ok: true, state });
+    } catch (error) {
+      return sendJson(res, 400, { ok: false, error: error.message });
+    }
+  }
+
+  if (req.method === 'POST' && pathname === '/api/ggst-toggle') {
+    try {
+      const input = await readJson(req);
+      state.ggstApi.enabled = input.enabled === true;
+      state.ggstApi.lastStatus = state.ggstApi.enabled ? 'Tracking por API de GGST activado.' : 'Tracking por API de GGST apagado.';
+      if (state.ggstApi.enabled && !state.ggstApi.baselined) await pollGgstReplays();
+      saveState();
+      return sendJson(res, 200, { ok: true, state });
+    } catch (error) {
+      return sendJson(res, 400, { ok: false, error: error.message });
+    }
+  }
+
   if (req.method === 'OPTIONS') {
     res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' });
     return res.end();
@@ -485,6 +747,10 @@ const server = http.createServer(async (req, res) => {
   res.writeHead(405);
   res.end('Method not allowed');
 });
+
+// Sondeo periódico de la API de replays de GGST.
+setInterval(() => { pollGgstReplays().catch(() => {}); }, GGST_POLL_MS);
+if (state.ggstApi && state.ggstApi.enabled) pollGgstReplays().catch(() => {});
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log('');

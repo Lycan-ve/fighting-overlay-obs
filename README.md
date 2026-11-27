@@ -1,4 +1,4 @@
-# Fighting Overlay OBS — v0.10
+# Fighting Overlay OBS — v0.11
 
 Overlay y tracking local para OBS: marcador W/L, win rate, racha, historial de partidas, estadísticas y **detección automática por OCR** en 2XKO, Guilty Gear Strive y Mortal Kombat 11. Cada juego tiene su propio tema visual, y los mains y personajes detectados muestran retratos: iconos locales incluidos en `public/Assest` para Guilty Gear Strive y retratos del repositorio Hot-Coffee-Frontend para 2XKO (en MK11 el HUD no muestra personajes, así que se usan gamertags; sus iconos usan IDs numéricos y se activan rellenando `public/Assest/MK 11/names.json`).
 
@@ -64,6 +64,10 @@ Con la detección activa, el panel alterna la lectura entre tres zonas de la ven
 4.  En 2XKO y GGST, tu personaje o equipo aparece en la fila **EN PARTIDA**, el rival en **RIVALES**.
 5.  En la pantalla de resultado, dos lecturas seguidas registran la partida automáticamente (con enfriamiento de 10 segundos).
 6.  Si registró algo mal, pulsa **Deshacer última partida**.
+
+### Tracking por API para GGST (v0.11): sin captura ni OCR
+
+Para Guilty Gear Strive existe una vía mejor que la captura: la API de replays del propio juego. El proyecto incluye un helper en `tools/ggst-token` que, con Steam abierto y GGST instalado, genera un token de sesión (requiere tener [Go](https://go.dev/dl/) instalado y ejecutar `ggst-token.bat` una vez). Con el token y el Player ID pegados en el panel, el servidor sondea tu historial de replays cada 20 segundos y registra automáticamente victorias, derrotas, tu personaje y el rival, con la fuente AUTO en el historial. No hay captura de pantalla, no hay OCR y no consume FPS. La primera conexión marca tu historial actual como ya conocido, así que solo cuentan las partidas que juegues a partir de conectar. El token se guarda en `data.json` de tu equipo y caduca cuando lo caduca el servidor del juego: si el panel avisa, vuelve a ejecutar el helper. La API es no oficial y puede cambiar con parches.
 
 ### Modo automático total (v0.9)
 

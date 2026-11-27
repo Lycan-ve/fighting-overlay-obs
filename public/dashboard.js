@@ -350,6 +350,11 @@ function render(state) {
   $('session-reset-mode').value = state.sessionResetMode || 'manual';
   $('session-idle-minutes').value = state.sessionIdleMinutes || 30;
   $('session-idle-wrap').hidden = (state.sessionResetMode || 'manual') !== 'idle';
+  const ggstApi = state.ggstApi || {};
+  setValueUnlessFocused('ggst-token-input', ggstApi.token || '');
+  setValueUnlessFocused('ggst-player-id-input', ggstApi.playerId || '');
+  $('ggst-api-toggle').checked = ggstApi.enabled === true;
+  $('ggst-api-status').textContent = ggstApi.lastStatus || '';
   $('summary-wins').textContent = profile.wins;
   $('summary-losses').textContent = profile.losses;
   $('summary-rate').textContent = winRate(profile) + '%';
@@ -1066,6 +1071,27 @@ $('session-reset-mode').addEventListener('change', () => {
   saveAutomation();
 });
 $('session-idle-minutes').addEventListener('change', saveAutomation);
+$('ggst-connect').addEventListener('click', async () => {
+  try {
+    const saved = await api('/api/ggst-session', {
+      token: $('ggst-token-input').value.trim(),
+      playerId: $('ggst-player-id-input').value.trim()
+    });
+    lastUpdatedAt = saved.updatedAt;
+    render(saved);
+  } catch (error) {
+    $('ggst-api-status').textContent = error.message;
+  }
+});
+$('ggst-api-toggle').addEventListener('change', async () => {
+  try {
+    const saved = await api('/api/ggst-toggle', { enabled: $('ggst-api-toggle').checked });
+    lastUpdatedAt = saved.updatedAt;
+    render(saved);
+  } catch (error) {
+    $('ggst-api-status').textContent = error.message;
+  }
+});
 $('add-win').addEventListener('click', () => addResult('win'));
 $('add-loss').addEventListener('click', () => addResult('loss'));
 $('undo-last').addEventListener('click', undoLast);
